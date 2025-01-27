@@ -12,7 +12,6 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? notes;
-  final String? imageUrl;
 
   Product({
     required this.id,
@@ -26,7 +25,6 @@ class Product {
     required this.createdAt,
     required this.updatedAt,
     this.notes,
-    this.imageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,28 +35,9 @@ class Product {
       'expiryDate': Timestamp.fromDate(expiryDate),
       'quantity': quantity,
       'unit': unit,
-      'areaId': areaId,
+      'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'notes': notes,
-      'imageUrl': imageUrl,
     };
-  }
-
-  factory Product.fromMap(String id, Map<String, dynamic> map) {
-    return Product(
-      id: id,
-      name: map['name'] ?? '',
-      category: map['category'] ?? '',
-      manufacturingDate: (map['manufacturingDate'] as Timestamp).toDate(),
-      expiryDate: (map['expiryDate'] as Timestamp).toDate(),
-      quantity: (map['quantity'] as num).toDouble(),
-      unit: map['unit'] ?? '',
-      areaId: map['areaId'] ?? '',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
-      notes: map['notes'],
-      imageUrl: map['imageUrl'],
-    );
   }
 }

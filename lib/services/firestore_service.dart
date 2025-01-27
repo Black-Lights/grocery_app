@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:grocery/models/contact_message.dart';
 import '../models/area.dart';
 import '../models/product.dart';
 
@@ -7,25 +8,20 @@ class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Get current user ID with error handling
   String get currentUserId {
     final user = _auth.currentUser;
     if (user == null) throw Exception('No authenticated user found');
     return user.uid;
   }
 
-  // Get user document reference
-  DocumentReference<Map<String, dynamic>> get userDoc {
-    final uid = currentUserId;
-    return _firestore.collection('users').doc(uid);
-  }
-  
-  // Get areas collection reference
   CollectionReference<Map<String, dynamic>> get areasCollection {
-    return userDoc.collection('areas');
+    return _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('areas');
   }
 
-  // Default storage areas
+   // Add this property for default areas
   final List<Map<String, String>> defaultAreas = [
     {
       'name': 'Refrigerator',
@@ -49,20 +45,14 @@ class FirestoreService {
     }
   ];
 
-  // Initialize default areas for new user
+    // Add this method
   Future<void> initializeDefaultAreas() async {
     try {
-      // Ensure user is authenticated
-      if (_auth.currentUser == null) {
-        throw Exception('User must be authenticated');
-      }
-
-      print('Initializing areas for user: ${currentUserId}'); // Debug print
-      
+      print('Checking for existing areas...'); // Debug print
       final areasSnapshot = await areasCollection.get();
       
       if (areasSnapshot.docs.isEmpty) {
-        print('Creating default areas...'); // Debug print
+        print('No areas found, creating defaults...'); // Debug print
         
         // Create batch for multiple writes
         final batch = _firestore.batch();
@@ -82,13 +72,260 @@ class FirestoreService {
         await batch.commit();
         print('Default areas created successfully'); // Debug print
       } else {
-        print('Areas already exist'); // Debug print
+        print('Areas already exist, skipping initialization'); // Debug print
       }
     } catch (e) {
-      print('Error in initializeDefaultAreas: $e'); // Debug print
+      print('Error initializing default areas: $e'); // Debug print
       throw Exception('Failed to initialize default areas: $e');
     }
   }
+
+  // Get user document reference
+  DocumentReference<Map<String, dynamic>> get userDoc {
+    return _firestore.collection('users').doc(currentUserId);
+  }
+
+  // Get user data
+  Future<Map<String, dynamic>> getUserData() async {
+    try {
+      final doc = await userDoc.get();
+      if (!doc.exists) {
+        return {
+          'firstName': '',
+          'lastName': '',
+          'username': '',
+        };
+      }
+      return {
+        'firstName': doc.data()?['firstName'] ?? '',
+        'lastName': doc.data()?['lastName'] ?? '',
+        'username': doc.data()?['username'] ?? '',
+      };
+    } catch (e) {
+      print('Error getting user data: $e');
+      throw Exception('Failed to get user data');
+    }
+  }
+
+  // Update user profile
+  Future<void> updateUserProfile({
+    required String firstName,
+    required String lastName,
+    required String username,
+  }) async {
+    try {
+      // First check if username is already taken by another user
+      if (await _isUsernameExists(username)) {
+        throw Exception('Username already exists');
+      }
+
+      await userDoc.update({
+        'firstName': firstName,
+        'lastName': lastName,
+        'username': username,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating user profile: $e');
+      throw Exception('Failed to update profile: ${e.toString()}');
+    }
+  }
+
+  // Check if username exists
+  Future<bool> _isUsernameExists(String username) async {
+    try {
+      // Skip check if username hasn't changed
+      final currentData = await getUserData();
+      if (currentData['username'] == username) {
+        return false;
+      }
+
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username.toLowerCase())
+          .get();
+      
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking username: $e');
+      throw Exception('Failed to check username availability');
+    }
+  }
+
+  // Get notification settings
+  Future<Map<String, bool>> getNotificationSettings() async {
+    try {
+      final doc = await userDoc.get();
+      if (!doc.exists) {
+        return {
+          'expiryNotifications': true,
+          'lowStockNotifications': true,
+          'weeklyReminders': false,
+        };
+      }
+
+      final data = doc.data()?['notificationSettings'] as Map<String, dynamic>?;
+      if (data == null) {
+        return {
+          'expiryNotifications': true,
+          'lowStockNotifications': true,
+          'weeklyReminders': false,
+        };
+      }
+
+      return {
+        'expiryNotifications': data['expiryNotifications'] ?? true,
+        'lowStockNotifications': data['lowStockNotifications'] ?? true,
+        'weeklyReminders': data['weeklyReminders'] ?? false,
+      };
+    } catch (e) {
+      print('Error getting notification settings: $e');
+      throw Exception('Failed to get notification settings');
+    }
+  }
+
+  // Update notification setting
+  Future<void> updateNotificationSetting(String key, bool value) async {
+    try {
+      await userDoc.set({
+        'notificationSettings': {
+          key: value,
+        }
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error updating notification setting: $e');
+      throw Exception('Failed to update notification setting');
+    }
+  }
+
+  // Get single area
+  Future<Area?> getArea(String areaId) async {
+    try {
+      final doc = await areasCollection.doc(areaId).get();
+      if (!doc.exists) return null;
+
+      final data = doc.data()!;
+      return Area(
+        id: doc.id,
+        name: data['name'] ?? '',
+        description: data['description'] ?? '',
+        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
+    } catch (e) {
+      print('Error getting area: $e');
+      return null;
+    }
+  }
+
+  // Search products across all areas
+  Future<List<Product>> searchProducts(String query) async {
+    try {
+      if (query.trim().length < 2) return [];
+
+      print('Searching products for query: $query');
+      final queryLower = query.toLowerCase().trim();
+      final areas = await areasCollection.get();
+      List<Product> results = [];
+
+      for (var area in areas.docs) {
+        final areaName = area.data()['name'] ?? '';
+        print('Searching in area: $areaName'); // Debug print
+
+        final products = await area.reference
+            .collection('products')
+            .orderBy('name')
+            .get();
+
+        for (var doc in products.docs) {
+          final data = doc.data();
+          final productName = (data['name'] as String?)?.toLowerCase() ?? '';
+          
+          // Check if product name contains the search query
+          if (productName.contains(queryLower)) {
+            print('Found matching product: ${data['name']}'); // Debug print
+            
+            try {
+              final product = Product(
+                id: doc.id,
+                name: data['name'] ?? '',
+                category: data['category'] ?? '',
+                manufacturingDate: (data['manufacturingDate'] as Timestamp).toDate(),
+                expiryDate: (data['expiryDate'] as Timestamp).toDate(),
+                quantity: (data['quantity'] as num?)?.toDouble() ?? 0.0,
+                unit: data['unit'] ?? '',
+                areaId: area.id,
+                createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                notes: data['notes'],
+              );
+              results.add(product);
+            } catch (e) {
+              print('Error parsing product: $e'); // Debug print
+              print('Product data: $data'); // Debug print
+            }
+          }
+        }
+      }
+
+      print('Found ${results.length} matching products'); // Debug print
+      
+      // Sort results by name
+      results.sort((a, b) => a.name.compareTo(b.name));
+      return results;
+    } catch (e) {
+      print('Error searching products: $e');
+      return [];
+    }
+  }
+
+  // Get contact messages collection reference
+  CollectionReference<Map<String, dynamic>> get contactMessagesCollection {
+    return _firestore.collection('contactMessages');
+  }
+
+  // Add contact message
+  Future<void> addContactMessage({
+    required String name,
+    required String email,
+    required String message,
+  }) async {
+    try {
+      print('Adding contact message from: $name'); // Debug print
+      
+      await contactMessagesCollection.add({
+        'name': name,
+        'email': email,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': currentUserId,
+      });
+      
+      print('Contact message added successfully'); // Debug print
+    } catch (e) {
+      print('Error adding contact message: $e'); // Debug print
+      throw Exception('Failed to send message: ${e.toString()}');
+    }
+  }
+
+  // Get user's contact messages
+  Stream<List<ContactMessage>> getUserContactMessages() {
+    try {
+      return contactMessagesCollection
+          .where('userId', isEqualTo: currentUserId)
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs.map((doc) {
+          return ContactMessage.fromMap(doc.id, doc.data());
+        }).toList();
+      });
+    } catch (e) {
+      print('Error getting contact messages: $e');
+      throw Exception('Failed to get contact messages');
+    }
+  }
+
   // Add new area
   Future<String> addArea(String name, String description) async {
     try {
@@ -100,18 +337,15 @@ class FirestoreService {
       });
       return docRef.id;
     } catch (e) {
-      print('Error adding area: $e'); // Debug print
-      throw Exception('Failed to add area: $e');
+      print('Error adding area: $e');
+      throw Exception('Failed to add area');
     }
   }
 
   // Get all areas
   Stream<List<Area>> getAreas() {
     try {
-      return areasCollection
-          .orderBy('name')
-          .snapshots()
-          .map((snapshot) {
+      return areasCollection.snapshots().map((snapshot) {
         return snapshot.docs.map((doc) {
           final data = doc.data();
           return Area(
@@ -124,104 +358,8 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      print('Error getting areas: $e'); // Debug print
-      throw Exception('Failed to get areas: $e');
-    }
-  }
-
-  // Get single area
-  Future<Area?> getArea(String areaId) async {
-    try {
-      final doc = await areasCollection.doc(areaId).get();
-      if (!doc.exists) return null;
-      
-      final data = doc.data()!;
-      return Area(
-        id: doc.id,
-        name: data['name'] ?? '',
-        description: data['description'] ?? '',
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      );
-    } catch (e) {
-      print('Error getting area: $e'); // Debug print
-      throw Exception('Failed to get area: $e');
-    }
-  }
-
-  // Update area
-  Future<void> updateArea(String areaId, String name, String description) async {
-    try {
-      await areasCollection.doc(areaId).update({
-        'name': name,
-        'description': description,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('Error updating area: $e'); // Debug print
-      throw Exception('Failed to update area: $e');
-    }
-  }
-
-  // Delete area
-  Future<void> deleteArea(String areaId) async {
-    try {
-      // Get all products in the area
-      final productsSnapshot = await areasCollection
-          .doc(areaId)
-          .collection('products')
-          .get();
-      
-      // Create batch for multiple deletes
-      final batch = _firestore.batch();
-      
-      // Add product deletes to batch
-      for (var doc in productsSnapshot.docs) {
-        batch.delete(doc.reference);
-      }
-      
-      // Add area delete to batch
-      batch.delete(areasCollection.doc(areaId));
-      
-      // Commit the batch
-      await batch.commit();
-    } catch (e) {
-      print('Error deleting area: $e'); // Debug print
-      throw Exception('Failed to delete area: $e');
-    }
-  }
-
-  // Add product to area
-  Future<String> addProduct(String areaId, {
-    required String name,
-    required String category,
-    required DateTime manufacturingDate,
-    required DateTime expiryDate,
-    required double quantity,
-    required String unit,
-    String? notes,
-    String? imageUrl,
-  }) async {
-    try {
-      final docRef = await areasCollection
-          .doc(areaId)
-          .collection('products')
-          .add({
-        'name': name,
-        'category': category,
-        'manufacturingDate': Timestamp.fromDate(manufacturingDate),
-        'expiryDate': Timestamp.fromDate(expiryDate),
-        'quantity': quantity,
-        'unit': unit,
-        'notes': notes,
-        'imageUrl': imageUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      return docRef.id;
-    } catch (e) {
-      print('Error adding product: $e'); // Debug print
-      throw Exception('Failed to add product: $e');
+      print('Error getting areas: $e');
+      throw Exception('Failed to get areas');
     }
   }
 
@@ -231,7 +369,6 @@ class FirestoreService {
       return areasCollection
           .doc(areaId)
           .collection('products')
-          .orderBy('expiryDate')
           .snapshots()
           .map((snapshot) {
         return snapshot.docs.map((doc) {
@@ -248,18 +385,52 @@ class FirestoreService {
             createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             notes: data['notes'],
-            imageUrl: data['imageUrl'],
           );
         }).toList();
       });
     } catch (e) {
-      print('Error getting products: $e'); // Debug print
-      throw Exception('Failed to get products: $e');
+      print('Error getting products: $e');
+      throw Exception('Failed to get products');
+    }
+  }
+
+  // Add product to area
+  Future<String> addProduct(
+    String areaId, {
+    required String name,
+    required String category,
+    required DateTime manufacturingDate,
+    required DateTime expiryDate,
+    required double quantity,
+    required String unit,
+    String? notes,
+  }) async {
+    try {
+      final docRef = await areasCollection
+          .doc(areaId)
+          .collection('products')
+          .add({
+        'name': name,
+        'category': category,
+        'manufacturingDate': Timestamp.fromDate(manufacturingDate),
+        'expiryDate': Timestamp.fromDate(expiryDate),
+        'quantity': quantity,
+        'unit': unit,
+        'notes': notes,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (e) {
+      print('Error adding product: $e');
+      throw Exception('Failed to add product');
     }
   }
 
   // Update product
-  Future<void> updateProduct(String areaId, String productId, {
+  Future<void> updateProduct(
+    String areaId,
+    String productId, {
     String? name,
     String? category,
     DateTime? manufacturingDate,
@@ -267,21 +438,23 @@ class FirestoreService {
     double? quantity,
     String? unit,
     String? notes,
-    String? imageUrl,
   }) async {
     try {
       final updates = <String, dynamic>{
         'updatedAt': FieldValue.serverTimestamp(),
       };
-      
+
       if (name != null) updates['name'] = name;
       if (category != null) updates['category'] = category;
-      if (manufacturingDate != null) updates['manufacturingDate'] = Timestamp.fromDate(manufacturingDate);
-      if (expiryDate != null) updates['expiryDate'] = Timestamp.fromDate(expiryDate);
+      if (manufacturingDate != null) {
+        updates['manufacturingDate'] = Timestamp.fromDate(manufacturingDate);
+      }
+      if (expiryDate != null) {
+        updates['expiryDate'] = Timestamp.fromDate(expiryDate);
+      }
       if (quantity != null) updates['quantity'] = quantity;
       if (unit != null) updates['unit'] = unit;
       if (notes != null) updates['notes'] = notes;
-      if (imageUrl != null) updates['imageUrl'] = imageUrl;
 
       await areasCollection
           .doc(areaId)
@@ -289,8 +462,8 @@ class FirestoreService {
           .doc(productId)
           .update(updates);
     } catch (e) {
-      print('Error updating product: $e'); // Debug print
-      throw Exception('Failed to update product: $e');
+      print('Error updating product: $e');
+      throw Exception('Failed to update product');
     }
   }
 
@@ -303,53 +476,43 @@ class FirestoreService {
           .doc(productId)
           .delete();
     } catch (e) {
-      print('Error deleting product: $e'); // Debug print
-      throw Exception('Failed to delete product: $e');
+      print('Error deleting product: $e');
+      throw Exception('Failed to delete product');
     }
   }
 
-  // Search products across all areas
-  Future<List<Product>> searchProducts(String query) async {
+  // Update area
+  Future<void> updateArea(Area area) async {
     try {
-      List<Product> results = [];
-      
-      // Get all areas
-      final areasSnapshot = await areasCollection.get();
-      
-      // Search in each area
-      for (var areaDoc in areasSnapshot.docs) {
-        final productsSnapshot = await areaDoc
-            .reference
-            .collection('products')
-            .where('name', isGreaterThanOrEqualTo: query.toLowerCase())
-            .where('name', isLessThanOrEqualTo: query.toLowerCase() + '\uf8ff')
-            .get();
-        
-        results.addAll(
-          productsSnapshot.docs.map((doc) {
-            final data = doc.data();
-            return Product(
-              id: doc.id,
-              name: data['name'] ?? '',
-              category: data['category'] ?? '',
-              manufacturingDate: (data['manufacturingDate'] as Timestamp).toDate(),
-              expiryDate: (data['expiryDate'] as Timestamp).toDate(),
-              quantity: (data['quantity'] as num).toDouble(),
-              unit: data['unit'] ?? '',
-              areaId: areaDoc.id,
-              createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-              updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-              notes: data['notes'],
-              imageUrl: data['imageUrl'],
-            );
-          }),
-        );
-      }
-      
-      return results;
+      await areasCollection.doc(area.id).update({
+        'name': area.name,
+        'description': area.description,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
-      print('Error searching products: $e'); // Debug print
-      throw Exception('Failed to search products: $e');
+      print('Error updating area: $e');
+      throw Exception('Failed to update area');
+    }
+  }
+
+  // Delete area
+  Future<void> deleteArea(String areaId) async {
+    try {
+      final productsSnapshot = await areasCollection
+          .doc(areaId)
+          .collection('products')
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in productsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      batch.delete(areasCollection.doc(areaId));
+      
+      await batch.commit();
+    } catch (e) {
+      print('Error deleting area: $e');
+      throw Exception('Failed to delete area');
     }
   }
 }

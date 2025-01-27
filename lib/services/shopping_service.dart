@@ -20,17 +20,69 @@ class ShoppingService {
   }
 
   // Add item to shopping list
-  Future<void> addItem(String name, {required double quantity, String unit = ''}) async {
+  // Future<void> addItem(String name, {required double quantity, String unit = ''}) async {
+  //   try {
+  //     print('Debug - Adding item: $name with quantity: $quantity ${unit.isNotEmpty ? unit : ''}');
+      
+  //     final data = {
+  //       'name': name,
+  //       'isCompleted': false,
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //       'updatedAt': FieldValue.serverTimestamp(),
+  //       'quantity': quantity,
+  //       'unit': unit,
+  //     };
+      
+  //     print('Debug - Document data to be added: $data');
+      
+  //     await shoppingListCollection.add(data);
+  //     print('Debug - Item added successfully');
+  //   } catch (e) {
+  //     print('Error adding shopping item: $e');
+  //     throw Exception('Failed to add item to shopping list');
+  //   }
+  // }
+
+  //  Future<void> addItem({
+  //   required String name,
+  //   required double quantity,
+  //   required String unit,
+  // }) async {
+  //   try {
+  //     print('Adding item to shopping list: $name ($quantity $unit)'); // Debug print
+      
+  //     await shoppingListCollection.add({
+  //       'name': name,
+  //       'quantity': quantity,
+  //       'unit': unit,
+  //       'isCompleted': false,
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //       'updatedAt': FieldValue.serverTimestamp(),
+  //     });
+      
+  //     print('Item added successfully'); // Debug print
+  //   } catch (e) {
+  //     print('Error adding item to shopping list: $e'); // Debug print
+  //     throw Exception('Failed to add item to shopping list');
+  //   }
+  // }
+
+  // Single, consistent method for adding items
+  Future<void> addItem({
+    required String name,
+    required double quantity,
+    String unit = '',
+  }) async {
     try {
       print('Debug - Adding item: $name with quantity: $quantity ${unit.isNotEmpty ? unit : ''}');
       
       final data = {
         'name': name,
+        'quantity': quantity,
+        'unit': unit,
         'isCompleted': false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'quantity': quantity,
-        'unit': unit,
       };
       
       print('Debug - Document data to be added: $data');

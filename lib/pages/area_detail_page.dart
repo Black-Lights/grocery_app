@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:grocery/services/shopping_service.dart';
 import '../models/area.dart';
 import '../models/product.dart';
 import '../services/firestore_service.dart';
@@ -51,6 +52,7 @@ class AreaDetailPage extends StatefulWidget {
 
 class _AreaDetailPageState extends State<AreaDetailPage> {
   final FirestoreService _firestoreService = FirestoreService();
+  final ShoppingService _shoppingService = ShoppingService();
   late Area currentArea;
 
   @override
@@ -58,6 +60,97 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
   super.initState();
   currentArea = widget.area;
   }
+
+  void _showAddToShoppingListDialog(Product product) {
+    final quantityController = TextEditingController(text: '1');
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
+    Get.dialog(
+      AlertDialog(
+        title: Text('Add to Shopping List'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              product.name,
+              style: TextStyle(
+                fontSize: isTablet ? 20 : 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Unit: ${product.unit}',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: quantityController,
+              decoration: InputDecoration(
+                labelText: 'Quantity',
+                hintText: 'Enter quantity',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: Icon(Icons.shopping_cart),
+              ),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final quantity = double.tryParse(quantityController.text.trim());
+                if (quantity == null || quantity <= 0) {
+                  Get.snackbar(
+                    'Error',
+                    'Please enter a valid quantity',
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                  return;
+                }
+
+                await _shoppingService.addItem(
+                  name: product.name,
+                  quantity: quantity,
+                  unit: product.unit,
+                );
+
+                Get.back();
+                Get.snackbar(
+                  'Success',
+                  'Added to shopping list',
+                  backgroundColor: Colors.green,
+                  colorText: Colors.white,
+                );
+              } catch (e) {
+                Get.snackbar(
+                  'Error',
+                  'Failed to add to shopping list',
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
 
     void _showDeleteConfirmation(Product product) {
     Get.dialog(
@@ -565,10 +658,34 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
         }
 
         return ListView.builder(
-        padding: EdgeInsets.all(16),
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
+          padding: EdgeInsets.all(16),
+          itemCount: products.length,
+          itemBuilder: (context, index) {
+            final product = products[index];
+            final daysUntilExpiry = product.expiryDate.difference(DateTime.now()).inDays;
+
+            String expiryText;
+            Color expiryColor;
+
+            if (daysUntilExpiry > 365) {
+              final years = (daysUntilExpiry / 365).floor();
+              expiryText = '$years year${years > 1 ? 's' : ''} left';
+              expiryColor = Colors.green;
+            } else if (daysUntilExpiry > 30) {
+              final months = (daysUntilExpiry / 30).floor();
+              expiryText = '$months month${months > 1 ? 's' : ''} left';
+              expiryColor = Colors.green;
+            } else if (daysUntilExpiry > 0) {
+              expiryText = '$daysUntilExpiry day${daysUntilExpiry > 1 ? 's' : ''} left';
+              expiryColor = daysUntilExpiry < 7 ? Colors.orange : Colors.green;
+            } else if (daysUntilExpiry == 0) {
+              expiryText = 'Expires today';
+              expiryColor = Colors.red;
+            } else {
+              expiryText = 'Expired';
+              expiryColor = Colors.red;
+            }
+
           return Card(
             elevation: 2,
             margin: EdgeInsets.only(bottom: 16),
@@ -586,6 +703,16 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                       Text('Quantity: ${product.quantity} ${product.unit}'),
+                    Text(
+                      expiryText,
+                      style: TextStyle(color: expiryColor),
+                    ),
+                    if (product.notes?.isNotEmpty ?? false)
+                      Text(
+                        'Notes: ${product.notes}',
+                        style: TextStyle(fontStyle: FontStyle.italic),
+                      ),
                       SizedBox(height: 8),
                       Row(
                         children: [
@@ -616,6 +743,11 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
+                        icon: Icon(Icons.add_shopping_cart),
+                        onPressed: () => _showAddToShoppingListDialog(product),
+                        tooltip: 'Add to Shopping List',
+                      ),
+                      IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () => _showProductDialog(product: product),
                         tooltip: 'Edit Product',
@@ -627,6 +759,7 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
                       ),
                     ],
                   ),
+                  isThreeLine: true,
                 ),
                 // Show notes in an expanded section if they exist
                 if (product.notes?.isNotEmpty ?? false)
