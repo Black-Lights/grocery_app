@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:grocery/services/firestore_service.dart';
 import 'dart:async';
-import './verify.dart';
+import 'verify.dart';
 
 class SignUpPage extends StatefulWidget {
   @override

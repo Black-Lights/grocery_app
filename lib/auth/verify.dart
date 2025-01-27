@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import './wrapper.dart';
+import 'wrapper.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   @override

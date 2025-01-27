@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:grocery/pages/area_detail_page.dart';
-import './services/firestore_service.dart';
-import './services/shopping_service.dart';
-import './models/area.dart';
-import './models/product.dart';
-import './models/shopping_item.dart';
-import './wrapper.dart';
-import './pages/shopping_list_page.dart';
+import '../services/firestore_service.dart';
+import '../services/shopping_service.dart';
+import '../models/area.dart';
+import '../models/product.dart';
+import '../models/shopping_item.dart';
+import '../auth/wrapper.dart';
+import 'shopping_list_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
