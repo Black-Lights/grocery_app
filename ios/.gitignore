@@ -1,0 +1,86 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+
+# Firebase Config
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Android related
+*.aar
+*.apk
+*.iml
+.android/
+.android/.gradle/
+.android/local.properties
+/android/app/build/
+
+# iOS related
+*.hmap
+*.ipa
+*.xcuserstate
+*.xcworkspace
+DerivedData/
+ios/Flutter/.last_build_id
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Pods/
+ios/Runner.xcworkspace/
+
+# Xcode related
+**/DerivedData/
+*.mode1v3
+*.mode2v3
+*.pbxuser
+*.perspectivev3
+.profile
+.xcuserstate
+xcuserdata/
+**/*sync/
+Icon?
+!default.mode1v3
+!default.mode2v3
+!default.pbxuser
+!default.perspectivev3
+
+# Pods related
+**/Pods/
+**/.symlinks/
+
+# IntelliJ related
+*.idea/
+
+# VS Code related
+.vscode/
+
+# Flutter Framework files
+Flutter/App.framework
+Flutter/Flutter.framework
+Flutter/Generated.xcconfig
+Flutter/app.flx
+Flutter/app.zip
+Flutter/ephemeral/
+Flutter/flutter_assets/
+Flutter/flutter_export_environment.sh
+
+# Miscellaneous
+.sconsign.dblite
+.tags*
+.tags
+.DS_Store
+*.lock
+*.log
+
+# Temporary or build system files
+**/.generated/
+**/.vagrant/
+**/*sync/
+ServiceDefinitions.json
+Runner/GeneratedPluginRegistrant.*
