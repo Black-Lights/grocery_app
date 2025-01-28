@@ -60,7 +60,13 @@ class ProductDetailsDialog extends StatelessWidget {
                         children: [
                           Expanded(
                             flex: 2,
-                            child: _buildImagePreview(imagePath, isLargeScreen),
+                            child: Column(
+                              children: [
+                                _buildImagePreview(imagePath, isLargeScreen),
+                                if (details.barcode != null)
+                                  _buildBarcodeInfo(isLargeScreen),
+                              ],
+                            ),
                           ),
                           SizedBox(width: 24),
                           Expanded(
@@ -84,6 +90,8 @@ class ProductDetailsDialog extends StatelessWidget {
                       Column(
                         children: [
                           _buildImagePreview(imagePath, isLargeScreen),
+                          if (details.barcode != null)
+                            _buildBarcodeInfo(isLargeScreen),
                           SizedBox(height: 24),
                           FormFields(
                             nameController: nameController,
@@ -149,6 +157,158 @@ class ProductDetailsDialog extends StatelessWidget {
           fit: BoxFit.cover,
         ),
       ),
+    );
+  }
+
+  Widget _buildBarcodeInfo(bool isLargeScreen) {
+    return Container(
+      margin: EdgeInsets.only(top: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFF4B3F72).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Color(0xFFFFC857).withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Icon(
+                Icons.qr_code_scanner,
+                color: Color(0xFFFFC857),
+                size: isLargeScreen ? 24 : 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Barcode Information',
+                style: TextStyle(
+                  color: Color(0xFFFFC857),
+                  fontSize: isLargeScreen ? 18 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+
+          // Barcode Display Box
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                // Barcode "Image"
+                Container(
+                  height: 60,
+                  margin: EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1F2041),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      12,
+                      (index) => Container(
+                        width: 3,
+                        margin: EdgeInsets.symmetric(horizontal: 1),
+                        color: Colors.white,
+                        height: double.infinity,
+                      ),
+                    ),
+                  ),
+                ),
+                // Barcode Number
+                Text(
+                  details.barcode ?? '',
+                  style: TextStyle(
+                    color: Color(0xFF1F2041),
+                    fontSize: isLargeScreen ? 16 : 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Product Information
+          if (details.brand != null && details.brand!.isNotEmpty) ...[
+            _buildInfoRow(
+              icon: Icons.business,
+              label: 'Brand',
+              value: details.brand!,
+              isLargeScreen: isLargeScreen,
+            ),
+            SizedBox(height: 8),
+          ],
+
+          if (details.ingredients != null && details.ingredients!.isNotEmpty) ...[
+            _buildInfoRow(
+              icon: Icons.receipt_long,
+              label: 'Ingredients',
+              value: details.ingredients!,
+              isLargeScreen: isLargeScreen,
+              maxLines: 3,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required bool isLargeScreen,
+    int maxLines = 1,
+  }) {
+    return Row(
+      crossAxisAlignment: maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          color: Color(0xFFFFC857).withOpacity(0.7),
+          size: isLargeScreen ? 20 : 16,
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isLargeScreen ? 14 : 12,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isLargeScreen ? 14 : 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
