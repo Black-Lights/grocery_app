@@ -703,16 +703,10 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                       Text('Quantity: ${product.quantity} ${product.unit}'),
                     Text(
                       expiryText,
                       style: TextStyle(color: expiryColor),
                     ),
-                    if (product.notes?.isNotEmpty ?? false)
-                      Text(
-                        'Notes: ${product.notes}',
-                        style: TextStyle(fontStyle: FontStyle.italic),
-                      ),
                       SizedBox(height: 8),
                       Row(
                         children: [

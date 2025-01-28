@@ -7,6 +7,7 @@ import 'package:grocery/pages/about_page.dart';
 import 'package:grocery/pages/area_detail_page.dart';
 import 'package:grocery/pages/contact_page.dart';
 import 'package:grocery/pages/settings_page.dart';
+import 'package:grocery/widgets/product_image_capture/product_image_capture.dart';
 import '../services/firestore_service.dart';
 import '../services/shopping_service.dart';
 import '../models/area.dart';
@@ -14,6 +15,7 @@ import '../models/product.dart';
 import '../models/shopping_item.dart';
 import '../auth/wrapper.dart';
 import 'shopping_list_page.dart';
+
 
 class HomePage extends StatefulWidget {
   @override
@@ -787,14 +789,27 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            _unfocusSearch(); // Unfocus when adding new area
-            _showAddAreaDialog();
-          },
-          child: Icon(Icons.add),
-          tooltip: 'Add Storage Area',
-        ),
+        floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'scan',
+            onPressed: () {
+              Get.to(() => ProductImageCapture());
+            },
+            child: Icon(Icons.document_scanner),
+            tooltip: 'Scan Product',
+          ),
+          SizedBox(width: 16),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: _showAddAreaDialog,
+            child: Icon(Icons.add),
+            tooltip: 'Add Storage Area',
+          ),
+        ],
+      ),
       ),
     );
   }

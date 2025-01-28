@@ -197,6 +197,7 @@ class FirestoreService {
       throw Exception('Failed to update notification setting');
     }
   }
+  
 
   // Get single area
   Future<Area?> getArea(String areaId) async {
@@ -394,17 +395,57 @@ class FirestoreService {
     }
   }
 
+  Stream<List<Product>> getRecentProducts(String? areaId) {
+    try {
+      var query = areaId != null
+          ? areasCollection
+              .doc(areaId)
+              .collection('products')
+              .orderBy('createdAt', descending: true)
+              .limit(20)
+          : _firestore
+              .collectionGroup('products')
+              .orderBy('createdAt', descending: true)
+              .limit(20);
+
+      return query.snapshots().map((snapshot) {
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          final areaId = doc.reference.parent.parent!.id;
+          return Product(
+            id: doc.id,
+            name: data['name'] ?? '',
+            category: data['category'] ?? '',
+            manufacturingDate: (data['manufacturingDate'] as Timestamp).toDate(),
+            expiryDate: (data['expiryDate'] as Timestamp).toDate(),
+            quantity: (data['quantity'] as num).toDouble(),
+            unit: data['unit'] ?? '',
+            areaId: areaId,
+            createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            notes: data['notes'],
+          );
+        }).toList();
+      });
+    } catch (e) {
+      print('Error getting recent products: $e');
+      throw Exception('Failed to get recent products');
+    }
+  }
+
   // Add product to area
   Future<String> addProduct(
-    String areaId, {
-    required String name,
-    required String category,
-    required DateTime manufacturingDate,
-    required DateTime expiryDate,
-    required double quantity,
-    required String unit,
-    String? notes,
-  }) async {
+    String areaId,  // Non-nullable String parameter
+    {
+      required String name,
+      required String category,
+      required DateTime manufacturingDate,
+      required DateTime expiryDate,
+      required double quantity,
+      required String unit,
+      String? notes,
+    }
+  ) async {
     try {
       final docRef = await areasCollection
           .doc(areaId)
