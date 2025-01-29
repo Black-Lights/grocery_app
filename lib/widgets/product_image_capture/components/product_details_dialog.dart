@@ -40,6 +40,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
   late TextEditingController unitController;
   late TextEditingController notesController;
   late TextEditingController categoryController;
+  late TextEditingController brandController;  // Added brand controller
   String? _selectedAreaId;
   final RxBool isLoading = false.obs;
   final RxBool showCategoryDropdown = false.obs;
@@ -52,11 +53,18 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
   void initState() {
     super.initState();
     _selectedAreaId = widget.areaId ?? widget.selectedAreaId;
+    
+    // Initialize with barcode data if available
+    if (widget.details.barcode != null) {
+      print('Barcode detected: ${widget.details.barcode}');
+    }
+
     nameController = TextEditingController(text: widget.details.name);
     quantityController = TextEditingController(text: '1');
     unitController = TextEditingController(text: 'pcs');
     categoryController = TextEditingController();
     notesController = TextEditingController();
+    brandController = TextEditingController(text: widget.details.brand); // Initialize brand
     
     manufacturingDate.value = widget.details.manufacturingDate;
     expiryDate.value = widget.details.expiryDate;
@@ -72,6 +80,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     unitController.dispose();
     notesController.dispose();
     categoryController.dispose();
+    brandController.dispose();  // Dispose brand controller
     super.dispose();
   }
 
@@ -114,6 +123,8 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
         quantity: double.parse(quantityController.text),
         unit: unitController.text.trim(),
         notes: notesController.text.trim(),
+        brand: brandController.text.trim(),  // Add brand
+        barcode: widget.details.barcode,     // Add barcode
       );
 
       Get.back();
@@ -137,6 +148,91 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Widget _buildBarcodeInfo() {
+    if (widget.details.barcode == null) {
+      return Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: GroceryColors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: GroceryColors.skyBlue.withOpacity(0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.qr_code,
+              color: GroceryColors.grey400,
+              size: 20,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'No barcode detected',
+              style: TextStyle(
+                color: GroceryColors.grey400,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: GroceryColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: GroceryColors.skyBlue.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.qr_code,
+                color: GroceryColors.teal,
+                size: 20,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Barcode Detected',
+                style: TextStyle(
+                  color: GroceryColors.navy,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            widget.details.barcode!,
+            style: TextStyle(
+              color: GroceryColors.grey400,
+              fontSize: 14,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrandField() {
+    return TextFormField(
+      controller: brandController,
+      decoration: InputDecoration(
+        labelText: 'Brand (Optional)',
+        prefixIcon: Icon(Icons.business),
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -244,18 +340,19 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
 
         final areas = snapshot.data!;
         
-        // Verify if current selectedAreaId exists in areas
-        if (_selectedAreaId != null && !areas.any((area) => area.id == _selectedAreaId)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() {
-              _selectedAreaId = null;
-            });
-          });
+        // Check if current selectedAreaId exists in areas
+        if (_selectedAreaId != null && 
+            !areas.any((area) => area.id == _selectedAreaId)) {
+          _selectedAreaId = null;  // Reset if not found
         }
 
         return DropdownButtonFormField<String>(
           value: _selectedAreaId,
           hint: Text('Select Storage Area'),
+          decoration: InputDecoration(
+            labelText: 'Storage Area',
+            prefixIcon: Icon(Icons.storage_outlined),
+          ),
           items: areas.map((area) {
             return DropdownMenuItem<String>(
               value: area.id,
@@ -268,10 +365,6 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
             });
             widget.onAreaSelected(value);
           },
-          decoration: InputDecoration(
-            labelText: 'Storage Area',
-            prefixIcon: Icon(Icons.storage_outlined),
-          ),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please select a storage area';
@@ -662,19 +755,35 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     );
   }
 
+  bool _isTabletLayout(BuildContext context) {
+    // Check both width and orientation
+    final size = MediaQuery.of(context).size;
+    final isLandscape = size.width > size.height;
+    return size.width > 900 || (size.width > 600 && isLandscape);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final dialogWidth = widget.isTablet 
-        ? MediaQuery.of(context).size.width * 0.7 
-        : MediaQuery.of(context).size.width * 0.9;
+    final size = MediaQuery.of(context).size;
+    final isTablet = _isTabletLayout(context);
+    
+    // Dialog size calculations
+    final dialogWidth = isTablet 
+        ? size.width * 0.85  // Wider on tablet
+        : size.width * 0.9;
+    final dialogHeight = isTablet
+        ? size.height * 0.85  // Shorter on tablet to account for keyboard
+        : size.height * 0.9;
 
     return Dialog(
       backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 24 : 16,
+        vertical: isTablet ? 40 : 24,
+      ),
       child: Container(
         width: dialogWidth,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
-        ),
+        height: dialogHeight,
         decoration: BoxDecoration(
           color: GroceryColors.white,
           borderRadius: BorderRadius.circular(20),
@@ -682,102 +791,164 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
         child: Form(
           key: _formKey,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               _buildHeader(),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.isTablet)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: Column(
-                                children: [
-                                  _buildImagePreview(),
-                                  SizedBox(height: 16),
-                                  _buildAreaSelector(),
-                                  SizedBox(height: 16),
-                                  _buildRawTextSection(),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 24),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: nameController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Product Name',
-                                      prefixIcon: Icon(Icons.inventory_2_outlined),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
-                                        return 'Please enter a product name';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  SizedBox(height: 16),
-                                  _buildCategoryField(),
-                                  SizedBox(height: 16),
-                                  _buildQuantityAndUnit(),
-                                  SizedBox(height: 16),
-                                  _buildDates(),
-                                  SizedBox(height: 16),
-                                  _buildNotesField(),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      else
-                        Column(
-                          children: [
-                            _buildImagePreview(),
-                            SizedBox(height: 16),
-                            _buildAreaSelector(),
-                            SizedBox(height: 16),
-                            _buildRawTextSection(),
-                            SizedBox(height: 16),
-                            TextFormField(
-                              controller: nameController,
-                              decoration: InputDecoration(
-                                labelText: 'Product Name',
-                                prefixIcon: Icon(Icons.inventory_2_outlined),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter a product name';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: 16),
-                            _buildCategoryField(),
-                            SizedBox(height: 16),
-                            _buildQuantityAndUnit(),
-                            SizedBox(height: 16),
-                            _buildDates(),
-                            SizedBox(height: 16),
-                            _buildNotesField(),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
+                child: isTablet
+                    ? _buildTabletLayout(dialogWidth, dialogHeight)
+                    : _buildMobileLayout(),
               ),
               _buildActions(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout(double width, double height) {
+    return Row(
+      children: [
+        // Left Panel (40%) - Image and Barcode
+        Container(
+          width: width * 0.4,
+          decoration: BoxDecoration(
+            border: Border(
+              right: BorderSide(
+                color: GroceryColors.skyBlue.withOpacity(0.5),
+              ),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Image Container (80%)
+              Expanded(
+                flex: 8,
+                child: Container(
+                  margin: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: GroceryColors.skyBlue.withOpacity(0.5),
+                    ),
+                    image: DecorationImage(
+                      image: FileImage(File(widget.imagePath)),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+              // Barcode Container (20%)
+              Expanded(
+                flex: 2,
+                child: Container(
+                  margin: EdgeInsets.all(16),
+                  child: _buildBarcodeInfo(),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Right Panel (60%) - Form Fields
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildAreaSelector(),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Product Name',
+                      prefixIcon: Icon(Icons.inventory_2_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a product name';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  _buildBrandField(),
+                  SizedBox(height: 16),
+                  _buildCategoryField(),
+                  SizedBox(height: 16),
+                  _buildQuantityAndUnit(),
+                  SizedBox(height: 16),
+                  _buildDates(),
+                  SizedBox(height: 16),
+                  _buildNotesField(),
+                  SizedBox(height: 16),
+                  _buildRawTextSection(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image Container
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: GroceryColors.skyBlue.withOpacity(0.5),
+              ),
+              image: DecorationImage(
+                image: FileImage(File(widget.imagePath)),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+          
+          // Barcode Info
+          _buildBarcodeInfo(),
+          SizedBox(height: 16),
+          
+          // Form Fields
+          _buildAreaSelector(),
+          SizedBox(height: 16),
+          TextFormField(
+            controller: nameController,
+            decoration: InputDecoration(
+              labelText: 'Product Name',
+              prefixIcon: Icon(Icons.inventory_2_outlined),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter a product name';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16),
+          _buildBrandField(),
+          SizedBox(height: 16),
+          _buildCategoryField(),
+          SizedBox(height: 16),
+          _buildQuantityAndUnit(),
+          SizedBox(height: 16),
+          _buildDates(),
+          SizedBox(height: 16),
+          _buildNotesField(),
+          SizedBox(height: 16),
+          _buildRawTextSection(),
+        ],
       ),
     );
   }
