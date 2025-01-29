@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:grocery/models/contact_message.dart';
 import '../models/area.dart';
 import '../models/product.dart';
+import '../models/notification.dart';
+import '../models/notification_settings.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -152,53 +154,6 @@ class FirestoreService {
     }
   }
 
-  // Get notification settings
-  Future<Map<String, bool>> getNotificationSettings() async {
-    try {
-      final doc = await userDoc.get();
-      if (!doc.exists) {
-        return {
-          'expiryNotifications': true,
-          'lowStockNotifications': true,
-          'weeklyReminders': false,
-        };
-      }
-
-      final data = doc.data()?['notificationSettings'] as Map<String, dynamic>?;
-      if (data == null) {
-        return {
-          'expiryNotifications': true,
-          'lowStockNotifications': true,
-          'weeklyReminders': false,
-        };
-      }
-
-      return {
-        'expiryNotifications': data['expiryNotifications'] ?? true,
-        'lowStockNotifications': data['lowStockNotifications'] ?? true,
-        'weeklyReminders': data['weeklyReminders'] ?? false,
-      };
-    } catch (e) {
-      print('Error getting notification settings: $e');
-      throw Exception('Failed to get notification settings');
-    }
-  }
-
-  // Update notification setting
-  Future<void> updateNotificationSetting(String key, bool value) async {
-    try {
-      await userDoc.set({
-        'notificationSettings': {
-          key: value,
-        }
-      }, SetOptions(merge: true));
-    } catch (e) {
-      print('Error updating notification setting: $e');
-      throw Exception('Failed to update notification setting');
-    }
-  }
-  
-
   // Get single area
   Future<Area?> getArea(String areaId) async {
     try {
@@ -326,6 +281,219 @@ class FirestoreService {
       throw Exception('Failed to get contact messages');
     }
   }
+
+  // Get notifications collection reference
+  CollectionReference<Map<String, dynamic>> get _notificationsRef {
+    return _firestore
+        .collection('users')
+        .doc(currentUserId)
+        .collection('notifications');
+  }
+
+  Future<List<GroceryNotification>> getRecentNotifications() async {
+    try {
+      print('Fetching recent notifications from Firestore...');
+      final snapshot = await _notificationsRef
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .get();
+
+      final notifications = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return GroceryNotification.fromMap({
+          'id': doc.id,
+          ...data,
+        });
+      }).toList();
+
+      print('Retrieved ${notifications.length} notifications from Firestore');
+      return notifications;
+    } catch (e) {
+      print('Error getting recent notifications: $e');
+      return [];
+    }
+  }
+
+  // Get notification settings (updated version)
+  Future<Map<String, dynamic>> getNotificationSettings() async {
+    try {
+      final doc = await userDoc.get();
+      if (!doc.exists) {
+        return NotificationSettings().toMap();
+      }
+      final data = doc.data()?['notificationSettings'];
+      return data ?? NotificationSettings().toMap();
+    } catch (e) {
+      print('Error getting notification settings: $e');
+      throw Exception('Failed to get notification settings');
+    }
+  }
+
+  // Update notification settings (updated version)
+  Future<void> updateNotificationSettings(Map<String, dynamic> settings) async {
+    try {
+      await userDoc.set({
+        'notificationSettings': settings,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error updating notification settings: $e');
+      throw Exception('Failed to update notification settings');
+    }
+  }
+
+  Future<void> addNotification(GroceryNotification notification) async {
+    try {
+      print('Adding notification to Firestore: ${notification.title}');
+      await _notificationsRef
+          .doc(notification.id)
+          .set(notification.toMap());
+      print('Successfully added notification to Firestore');
+    } catch (e) {
+      print('Error adding notification to Firestore: $e');
+      throw e;
+    }
+  }
+
+// Clear all notifications
+  Future<void> clearAllNotifications() async {
+    try {
+      print('Clearing all notifications...');
+      final batch = _firestore.batch();
+      final snapshots = await _notificationsRef.get();
+      
+      for (var doc in snapshots.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+      print('Successfully cleared all notifications');
+    } catch (e) {
+      print('Error clearing notifications: $e');
+      throw e;
+    }
+  }
+
+  // Mark a notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      await _notificationsRef.doc(notificationId).update({
+        'isRead': true,
+      });
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      throw Exception('Failed to mark notification as read');
+    }
+  }
+
+  
+
+  // Get unread notifications count
+  Future<int> getUnreadNotificationsCount() async {
+    try {
+      final AggregateQuerySnapshot snapshot = await _notificationsRef
+          .where('isRead', isEqualTo: false)
+          .count()
+          .get();
+
+      return snapshot.count ?? 0;
+    } catch (e) {
+      print('Error getting unread notifications count: $e');
+      throw Exception('Failed to get unread notifications count');
+    }
+  }
+
+  // Mark all notifications as read
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      final batch = _firestore.batch();
+      final unreadNotifications = await _notificationsRef
+          .where('isRead', isEqualTo: false)
+          .get();
+      
+      for (var doc in unreadNotifications.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      
+      await batch.commit();
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      throw Exception('Failed to mark all notifications as read');
+    }
+  }
+
+  Future<void> deleteOldNotifications() async {
+    try {
+      // Keep only last 100 notifications
+      final allNotifications = await _notificationsRef
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      if (allNotifications.docs.length > 100) {
+        final batch = _firestore.batch();
+        for (var i = 100; i < allNotifications.docs.length; i++) {
+          batch.delete(allNotifications.docs[i].reference);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      print('Error cleaning old notifications: $e');
+    }
+  }
+
+  Stream<List<GroceryNotification>> notificationsStream() {
+    return _notificationsRef
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            return GroceryNotification.fromMap({
+              'id': doc.id,
+              ...doc.data(),
+            });
+          }).toList();
+        });
+  }
+
+
+// Get all products across all areas
+  Future<List<Product>> getAllProducts() async {
+    try {
+      final areas = await areasCollection.get();
+      List<Product> allProducts = [];
+
+      for (var area in areas.docs) {
+        final productsSnapshot = await area.reference
+            .collection('products')
+            .get();
+
+        final products = productsSnapshot.docs.map((doc) {
+          final data = doc.data();
+          return Product(
+            id: doc.id,
+            name: data['name'] ?? '',
+            category: data['category'] ?? '',
+            manufacturingDate: (data['manufacturingDate'] as Timestamp).toDate(),
+            expiryDate: (data['expiryDate'] as Timestamp).toDate(),
+            quantity: (data['quantity'] as num).toDouble(),
+            unit: data['unit'] ?? '',
+            areaId: area.id,
+            createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+            notes: data['notes'],
+          );
+        }).toList();
+
+        allProducts.addAll(products);
+      }
+
+      return allProducts;
+    } catch (e) {
+      print('Error getting all products: $e');
+      throw Exception('Failed to get all products');
+    }
+  }
+
 
   // Add new area
   Future<String> addArea(String name, String description) async {

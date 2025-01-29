@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../config/theme.dart';
 import '../services/firestore_service.dart';
 import '../models/contact_message.dart';
 
@@ -13,35 +14,71 @@ class _ContactPageState extends State<ContactPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
-  bool _isSending = false;
+  final RxBool _isSending = false.obs;
+  final _formKey = GlobalKey<FormState>();
+
+  Widget _buildContactInfo({
+    required String title,
+    required String value,
+    required IconData icon,
+    required bool isTablet,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: GroceryColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: GroceryColors.skyBlue.withOpacity(0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: GroceryColors.teal.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: GroceryColors.teal,
+              size: isTablet ? 28 : 24,
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: GroceryColors.navy,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: isTablet ? 14 : 13,
+                    color: GroceryColors.grey400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _sendMessage() async {
-    if (_nameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _messageController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please fill all fields',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    // Basic email validation
-    if (!_emailController.text.trim().contains('@')) {
-      Get.snackbar(
-        'Error',
-        'Please enter a valid email address',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    setState(() {
-      _isSending = true;
-    });
+    _isSending.value = true;
 
     try {
       await _firestoreService.addContactMessage(
@@ -50,7 +87,6 @@ class _ContactPageState extends State<ContactPage> {
         message: _messageController.text.trim(),
       );
 
-      // Clear the form
       _nameController.clear();
       _emailController.clear();
       _messageController.clear();
@@ -58,166 +94,204 @@ class _ContactPageState extends State<ContactPage> {
       Get.snackbar(
         'Success',
         'Message sent successfully',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+        backgroundColor: GroceryColors.success,
+        colorText: GroceryColors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
       );
     } catch (e) {
       Get.snackbar(
         'Error',
         'Failed to send message',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        backgroundColor: GroceryColors.error,
+        colorText: GroceryColors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
       );
     } finally {
-      setState(() {
-        _isSending = false;
-      });
+      _isSending.value = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 600;
+    final showAppBar = !isTablet || MediaQuery.of(context).size.width <= 1100;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Contact Us',
-          style: TextStyle(fontSize: isTablet ? 24 : 20),
-        ),
-      ),
+      backgroundColor: GroceryColors.background,
+      appBar: showAppBar
+          ? AppBar(
+              title: Text(
+                'Contact Us',
+                style: TextStyle(
+                  fontSize: isTablet ? 24 : 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          : null,
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isTablet ? 32 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Get in Touch',
-              style: TextStyle(
-                fontSize: isTablet ? 28 : 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'We\'d love to hear from you. Send us a message and we\'ll respond as soon as possible.',
-              style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            SizedBox(height: 32),
-            
             // Contact Form
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: 'Name',
-                hintText: 'Enter your name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Container(
+              padding: EdgeInsets.all(isTablet ? 32 : 24),
+              decoration: BoxDecoration(
+                color: GroceryColors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: GroceryColors.skyBlue.withOpacity(0.5),
                 ),
-                prefixIcon: Icon(Icons.person),
-                enabled: !_isSending,
-              ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                hintText: 'Enter your email',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                prefixIcon: Icon(Icons.email),
-                enabled: !_isSending,
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                labelText: 'Message',
-                hintText: 'Enter your message',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignLabelWithHint: true,
-                prefixIcon: Padding(
-                  padding: EdgeInsets.only(bottom: 80),
-                  child: Icon(Icons.message),
-                ),
-                enabled: !_isSending,
-              ),
-              maxLines: 5,
-            ),
-            SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: isTablet ? 60 : 50,
-              child: ElevatedButton(
-                onPressed: _isSending ? null : _sendMessage,
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isSending
-                    ? SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : Text(
-                        'Send Message',
-                        style: TextStyle(fontSize: isTablet ? 18 : 16),
-                      ),
-              ),
-            ),
-            SizedBox(height: 40),
-            
-            // Contact Information
-            Text(
-              'Other Ways to Contact Us',
-              style: TextStyle(
-                fontSize: isTablet ? 22 : 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 16),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(Icons.email, color: Theme.of(context).primaryColor),
-                    title: Text('Email'),
-                    subtitle: Text('support@yourdomain.com'),
-                  ),
-                  Divider(),
-                  ListTile(
-                    leading: Icon(Icons.phone, color: Theme.of(context).primaryColor),
-                    title: Text('Phone'),
-                    subtitle: Text('+1 234 567 890'),
-                  ),
-                  Divider(),
-                  ListTile(
-                    leading: Icon(Icons.location_on, color: Theme.of(context).primaryColor),
-                    title: Text('Address'),
-                    subtitle: Text('123 Main Street\nCity, State 12345'),
+                boxShadow: [
+                  BoxShadow(
+                    color: GroceryColors.navy.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Get in Touch',
+                      style: TextStyle(
+                        fontSize: isTablet ? 28 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: GroceryColors.navy,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'We\'d love to hear from you. Send us a message and we\'ll respond as soon as possible.',
+                      style: TextStyle(
+                        fontSize: isTablet ? 16 : 14,
+                        color: GroceryColors.grey400,
+                      ),
+                    ),
+                    SizedBox(height: 32),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!GetUtils.isEmail(value.trim())) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      controller: _messageController,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        labelText: 'Message',
+                        alignLabelWithHint: true,
+                        prefixIcon: Padding(
+                          padding: EdgeInsets.only(bottom: 80),
+                          child: Icon(Icons.message_outlined),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your message';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: isTablet ? 56 : 48,
+                      child: Obx(() => ElevatedButton(
+                        onPressed: _isSending.value ? null : _sendMessage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: GroceryColors.teal,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isSending.value
+                            ? SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    GroceryColors.white,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                'Send Message',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 16 : 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Contact Information
+            Text(
+              'Other Ways to Reach Us',
+              style: TextStyle(
+                fontSize: isTablet ? 24 : 20,
+                fontWeight: FontWeight.bold,
+                color: GroceryColors.navy,
+              ),
+            ),
+            SizedBox(height: 16),
+            _buildContactInfo(
+              title: 'Email',
+              value: 'support@yourdomain.com',
+              icon: Icons.email_outlined,
+              isTablet: isTablet,
+            ),
+            SizedBox(height: 12),
+            _buildContactInfo(
+              title: 'Phone',
+              value: '+1 234 567 890',
+              icon: Icons.phone_outlined,
+              isTablet: isTablet,
+            ),
+            SizedBox(height: 12),
+            _buildContactInfo(
+              title: 'Address',
+              value: '123 Main Street, City, State 12345',
+              icon: Icons.location_on_outlined,
+              isTablet: isTablet,
             ),
           ],
         ),
