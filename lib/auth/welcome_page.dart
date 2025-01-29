@@ -99,55 +99,80 @@ class WelcomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLargeScreen = _isLargeScreen(context);
 
-    if (isLargeScreen) {
-      return Scaffold(
-        body: Row(
-          children: [
-            // Left Panel (Static)
-            Expanded(
-              flex: 5,
-              child: Container(
-                color: GroceryColors.background,
-                padding: EdgeInsets.all(32),
-                child: Center(
-                  child: _buildLogo(),
-                ),
+    return WillPopScope(
+      onWillPop: () async {
+        // Handle back button press
+        return await Get.dialog(
+          AlertDialog(
+            title: Text('Exit App'),
+            content: Text('Are you sure you want to exit?'),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(result: false),
+                child: Text('No'),
               ),
-            ),
-            // Right Panel (Dynamic)
-            Expanded(
-              flex: 7,
-              child: Container(
-                color: GroceryColors.white,
-                padding: EdgeInsets.all(32),
-                child: Center(
-                  child: _buildAuthButtons(context),
+              ElevatedButton(
+                onPressed: () => Get.back(result: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GroceryColors.teal,
                 ),
+                child: Text('Yes'),
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Mobile/Portrait Layout
-    return Scaffold(
-      backgroundColor: GroceryColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Center(
-                  child: _buildLogo(),
-                ),
-              ),
-              _buildAuthButtons(context, isCompact: true),
-              SizedBox(height: 24),
             ],
           ),
+        ) ?? false;
+      },
+      child: Scaffold(
+        backgroundColor: isLargeScreen ? Colors.transparent : GroceryColors.background,
+        body: SafeArea(
+          child: isLargeScreen
+              ? Row(
+                  children: [
+                    // Left Panel (Static)
+                    Expanded(
+                      flex: 5,
+                      child: Container(
+                        color: GroceryColors.background,
+                        padding: EdgeInsets.all(32),
+                        child: Center(
+                          child: _buildLogo(),
+                        ),
+                      ),
+                    ),
+                    // Right Panel (Dynamic)
+                    Expanded(
+                      flex: 7,
+                      child: Container(
+                        color: GroceryColors.white,
+                        padding: EdgeInsets.all(32),
+                        child: Center(
+                          child: _buildAuthButtons(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildLogo(),
+                                SizedBox(height: 48),
+                                _buildAuthButtons(context, isCompact: true),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
         ),
       ),
     );

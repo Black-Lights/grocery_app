@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../pages/homepage.dart';
-import 'login.dart';
+import 'welcome_page.dart';  // Import welcome page instead of login
 import 'verify.dart';
 
 class Wrapper extends StatelessWidget {
@@ -13,7 +13,6 @@ class Wrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading indicator while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
             body: Center(
@@ -30,8 +29,8 @@ class Wrapper extends StatelessWidget {
           return VerifyEmailPage();
         }
 
-        print('Wrapper: No user logged in, showing LoginPage');
-        return LoginPage();
+        print('Wrapper: No user logged in, showing WelcomePage');
+        return WelcomePage();  // Show welcome page instead of login directly
       },
     );
   }
