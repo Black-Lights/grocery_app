@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../config/theme.dart';
+import 'auth_layout.dart';
 import 'signup.dart';
 import 'forgot_password.dart';
+import 'verify.dart';  // Add this import
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _LoginPageState createState() => _LoginPageState();
 }
 
@@ -18,21 +20,19 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController password = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  bool isLoading = false;
-  bool isGoogleLoading = false;
+  final RxBool isLoading = false.obs;
+  final RxBool isGoogleLoading = false.obs;
 
   Future<void> signInWithGoogle() async {
-    setState(() {
-      isGoogleLoading = true;
-    });
+    if (isLoading.value || isGoogleLoading.value) return;
 
     try {
+      isGoogleLoading.value = true;
+      
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
-        setState(() {
-          isGoogleLoading = false;
-        });
+        isGoogleLoading.value = false;
         return;
       }
 
@@ -77,13 +77,14 @@ class _LoginPageState extends State<LoginPage> {
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
-      setState(() {
-        isGoogleLoading = false;
-      });
+      isGoogleLoading.value = false;
     }
   }
 
-  void signIn() async {
+  Future<void> signIn() async {
+    if (isLoading.value || isGoogleLoading.value) return;
+
+    // Validate inputs
     if (email.text.trim().isEmpty || password.text.isEmpty) {
       Get.snackbar(
         'Error',
@@ -91,27 +92,48 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        duration: Duration(seconds: 3),
       );
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
-
     try {
-      await _auth.signInWithEmailAndPassword(
+      isLoading.value = true;
+      
+      print('Attempting to sign in with email: ${email.text.trim()}');
+      
+      // Clear any existing user session
+      await FirebaseAuth.instance.signOut();
+      
+      // Attempt sign in
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email.text.trim(),
         password: password.text,
       );
+
+      // Check if user exists
+      if (userCredential.user == null) {
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'No user found with this email',
+        );
+      }
+
+      print('Successfully signed in user: ${userCredential.user?.uid}');
+
+      // The Wrapper will handle navigation based on email verification status
+      // No need to navigate manually here
+      
     } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException during login: ${e.code} - ${e.message}');
+      
       String message;
       switch (e.code) {
         case 'user-not-found':
           message = 'No user found with this email';
           break;
         case 'wrong-password':
-          message = 'Wrong password';
+          message = 'Incorrect password';
           break;
         case 'invalid-email':
           message = 'Invalid email address';
@@ -120,233 +142,221 @@ class _LoginPageState extends State<LoginPage> {
           message = 'This account has been disabled';
           break;
         case 'too-many-requests':
-          message = 'Too many attempts. Try again later';
+          message = 'Too many attempts. Please try again later';
+          break;
+        case 'network-request-failed':
+          message = 'Network error. Please check your connection';
+          break;
+        case 'invalid-credential':
+          message = 'Invalid login credentials';
           break;
         default:
-          message = e.message ?? 'An error occurred';
+          message = e.message ?? 'An error occurred during sign in';
       }
+      
       Get.snackbar(
-        'Error',
+        'Sign In Failed',
         message,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        duration: Duration(seconds: 5),
+        icon: Icon(Icons.error_outline, color: Colors.white),
       );
     } catch (e) {
+      print('Unexpected error during sign in: $e');
+      
       Get.snackbar(
         'Error',
-        'An unexpected error occurred',
+        'An unexpected error occurred. Please try again',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        duration: Duration(seconds: 5),
+        icon: Icon(Icons.error_outline, color: Colors.white),
       );
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      isLoading.value = false;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.width > 600;
-    final padding = isTablet ? 32.0 : 16.0;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Login",
-          style: TextStyle(fontSize: isTablet ? 24 : 20),
-        ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(padding),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 600),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(
-                  Icons.account_circle,
-                  size: isTablet ? 120 : 80,
-                  color: Theme.of(context).primaryColor,
-                ),
-                SizedBox(height: isTablet ? 40 : 20),
-                TextField(
-                  controller: email,
-                  decoration: InputDecoration(
-                    hintText: 'Enter email',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabled: !isLoading && !isGoogleLoading,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(fontSize: isTablet ? 18 : 16),
-                ),
-                SizedBox(height: isTablet ? 24 : 16),
-                TextField(
-                  controller: password,
-                  decoration: InputDecoration(
-                    hintText: 'Enter password',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabled: !isLoading && !isGoogleLoading,
-                  ),
-                  obscureText: true,
-                  style: TextStyle(fontSize: isTablet ? 18 : 16),
-                ),
-                SizedBox(height: isTablet ? 32 : 24),
-                // Email/Password Login Button
-                SizedBox(
-                  height: isTablet ? 60 : 50,
-                  child: ElevatedButton(
-                    onPressed: (isLoading || isGoogleLoading) ? null : signIn,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: isLoading
-                        ? SizedBox(
-                            height: isTablet ? 24 : 20,
-                            width: isTablet ? 24 : 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : Text(
-                            'Login',
-                            style: TextStyle(fontSize: isTablet ? 18 : 16),
-                          ),
-                  ),
-                ),
-                SizedBox(height: isTablet ? 24 : 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey[400],
-                        thickness: 1,
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'OR',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: isTablet ? 16 : 14,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        color: Colors.grey[400],
-                        thickness: 1,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: isTablet ? 24 : 16),
-                // Google Sign In Button
-                SizedBox(
-                  height: isTablet ? 60 : 50,
-                  child: ElevatedButton(
-                    onPressed: (isLoading || isGoogleLoading) ? null : signInWithGoogle,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey[300]!),
-                      ),
-                    ),
-                    child: isGoogleLoading
-                        ? SizedBox(
-                            height: isTablet ? 24 : 20,
-                            width: isTablet ? 24 : 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'G',
-                                    style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Sign in with Google',
-                                style: TextStyle(
-                                  fontSize: isTablet ? 18 : 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-                SizedBox(height: isTablet ? 24 : 16),
-                // Sign Up and Forgot Password Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: (isLoading || isGoogleLoading)
-                          ? null
-                          : () => Get.to(() => SignUpPage()),
-                      child: Text(
-                        'Sign Up',
-                        style: TextStyle(fontSize: isTablet ? 16 : 14),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: (isLoading || isGoogleLoading)
-                          ? null
-                          : () => Get.to(() => ForgotPasswordPage()),
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(fontSize: isTablet ? 16 : 14),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
+  Widget _buildLoginForm() {
+    return Container(
+      constraints: BoxConstraints(maxWidth: 400),
+      padding: EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Welcome Back',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: GroceryColors.navy,
             ),
           ),
+          SizedBox(height: 8),
+          Text(
+            'Sign in to continue managing your groceries',
+            style: TextStyle(
+              fontSize: 16,
+              color: GroceryColors.grey400,
+            ),
+          ),
+          SizedBox(height: 32),
+          TextFormField(
+            controller: email,
+            decoration: InputDecoration(
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.email_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            keyboardType: TextInputType.emailAddress,
+          ),
+          SizedBox(height: 16),
+          TextFormField(
+            controller: password,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: Icon(Icons.lock_outline),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            obscureText: true,
+          ),
+          SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Get.to(() => ForgotPasswordPage()),
+              child: Text('Forgot Password?'),
+            ),
+          ),
+          SizedBox(height: 24),
+          Obx(() => ElevatedButton(
+            onPressed: isLoading.value || isGoogleLoading.value ? null : signIn,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GroceryColors.teal,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: isLoading.value
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          )),
+          SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'OR',
+                  style: TextStyle(
+                    color: GroceryColors.grey400,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider()),
+            ],
+          ),
+          SizedBox(height: 16),
+          Obx(() => OutlinedButton(
+            onPressed: isLoading.value || isGoogleLoading.value 
+                ? null 
+                : signInWithGoogle,
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: GroceryColors.grey200),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: isGoogleLoading.value
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        GroceryColors.teal,
+                      ),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/google_logo.png',
+                        height: 24,
+                        width: 24,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Sign in with Google',
+                        style: TextStyle(
+                          color: GroceryColors.navy,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+          )),
+          SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Don't have an account? ",
+                style: TextStyle(color: GroceryColors.grey400),
+              ),
+              TextButton(
+                onPressed: () => Get.to(() => SignUpPage()),
+                child: Text('Sign Up'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthLayout(
+      title: 'Sign In',
+      child: Center(
+        child: SingleChildScrollView(
+          child: _buildLoginForm(),
         ),
       ),
     );
   }
 }
-

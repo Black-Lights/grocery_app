@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:grocery/services/firestore_service.dart';
-import 'dart:async';
+import '../config/theme.dart';
+import '../services/firestore_service.dart';
+import 'auth_layout.dart';
 import 'verify.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -12,31 +15,56 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  // Controllers for text fields
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController firstName = TextEditingController();
   final TextEditingController lastName = TextEditingController();
   final TextEditingController username = TextEditingController();
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
   
-  // Firebase instances
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // State variables
-  bool isLoading = false;
-  bool isCheckingUsername = false;
-  bool isUsernameAvailable = true;
-  String? usernameError;
+  final RxBool isLoading = false.obs;
+  final RxBool isCheckingUsername = false.obs;
+  final RxBool isUsernameAvailable = true.obs;
+  final RxString usernameError = RxString('');
   Timer? _debounceTimer;
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    firstName.dispose();
+    lastName.dispose();
+    username.dispose();
+    email.dispose();
+    password.dispose();
     super.dispose();
   }
+void debouncedUsernameCheck(String value) {
+    if (value.isEmpty) {
+      usernameError.value = 'Username is required';
+      isUsernameAvailable.value = false;
+      return;
+    }
 
-  // Username validation function
+    // Cancel previous timer if it exists
+    _debounceTimer?.cancel();
+
+    // Basic validation first
+    final validationError = validateUsername(value);
+    if (validationError != null) {
+      usernameError.value = validationError;
+      isUsernameAvailable.value = false;
+      return;
+    }
+
+    // Set timer for API call
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      checkUsername(value);
+    });
+  }
+
   String? validateUsername(String username) {
     if (username.isEmpty) {
       return 'Username is required';
@@ -51,29 +79,15 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(username)) {
-      return 'Username must be alphanumeric only';
+      return 'Username can only contain letters and numbers';
     }
 
     return null;
   }
 
-  // Check username availability in Firestore
   Future<void> checkUsername(String value) async {
-    // Basic validation first
-    final validationError = validateUsername(value);
-    
-    if (validationError != null) {
-      setState(() {
-        usernameError = validationError;
-        isUsernameAvailable = false;
-      });
-      return;
-    }
-
-    setState(() {
-      isCheckingUsername = true;
-      usernameError = null;
-    });
+    isCheckingUsername.value = true;
+    usernameError.value = '';
 
     try {
       final snapshot = await _firestore
@@ -81,81 +95,28 @@ class _SignUpPageState extends State<SignUpPage> {
           .where('username', isEqualTo: value.toLowerCase())
           .get();
 
-      if (mounted) {
-        setState(() {
-          isUsernameAvailable = snapshot.docs.isEmpty;
-          usernameError = snapshot.docs.isEmpty ? null : 'Username is already taken';
-          isCheckingUsername = false;
-        });
+      isUsernameAvailable.value = snapshot.docs.isEmpty;
+      if (!snapshot.docs.isEmpty) {
+        usernameError.value = 'Username is already taken';
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          isUsernameAvailable = true;
-          usernameError = null;
-          isCheckingUsername = false;
-        });
-      }
+      usernameError.value = 'Error checking username availability';
+      isUsernameAvailable.value = false;
+    } finally {
+      isCheckingUsername.value = false;
     }
   }
 
-  // Debounce username check
-  void debouncedUsernameCheck(String value) {
-    _debounceTimer?.cancel();
-    
-    if (value.length < 4) {
-      setState(() {
-        usernameError = value.isEmpty 
-            ? 'Username is required' 
-            : 'Username must be at least 4 characters';
-        isUsernameAvailable = false;
-      });
-      return;
-    }
-
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      checkUsername(value);
-    });
-  }
-
-  // Sign up function
   Future<void> signUp() async {
-    if (isLoading) return;
+    if (isLoading.value) return;
 
-    // Validate all fields
-    if (firstName.text.trim().isEmpty ||
-        lastName.text.trim().isEmpty ||
-        username.text.trim().isEmpty ||
-        email.text.trim().isEmpty ||
-        password.text.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please fill all fields',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
-
-    // Validate username
-    final usernameValidation = validateUsername(username.text.trim());
-    if (usernameValidation != null) {
-      Get.snackbar(
-        'Error',
-        usernameValidation,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-    });
 
     try {
+      isLoading.value = true;
+
       // Create user in Firebase Auth
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.text.trim(),
@@ -176,6 +137,7 @@ class _SignUpPageState extends State<SignUpPage> {
       final firestoreService = FirestoreService();
       await firestoreService.initializeDefaultAreas();
 
+      // Navigate to email verification
       Get.offAll(() => VerifyEmailPage());
     } on FirebaseAuthException catch (e) {
       String message;
@@ -184,7 +146,7 @@ class _SignUpPageState extends State<SignUpPage> {
           message = 'The password provided is too weak';
           break;
         case 'email-already-in-use':
-          message = 'An account already exists for this email';
+          message = 'An account already exists with this email';
           break;
         case 'invalid-email':
           message = 'Invalid email address';
@@ -208,173 +170,222 @@ class _SignUpPageState extends State<SignUpPage> {
         snackPosition: SnackPosition.BOTTOM,
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      isLoading.value = false;
     }
   }
-
+  Widget _buildSignupForm() {
+    return Container(
+      constraints: BoxConstraints(maxWidth: 400),
+      padding: EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Create Account',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: GroceryColors.navy,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Sign up to start managing your groceries',
+              style: TextStyle(
+                fontSize: 16,
+                color: GroceryColors.grey400,
+              ),
+            ),
+            SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: firstName,
+                    decoration: InputDecoration(
+                      labelText: 'First Name',
+                      prefixIcon: Icon(Icons.person_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: lastName,
+                    decoration: InputDecoration(
+                      labelText: 'Last Name',
+                      prefixIcon: Icon(Icons.person_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Obx(() => TextFormField(
+              controller: username,
+              decoration: InputDecoration(
+                labelText: 'Username',
+                prefixIcon: Icon(Icons.alternate_email),
+                suffixIcon: isCheckingUsername.value
+                    ? Padding(
+                        padding: EdgeInsets.all(14),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              GroceryColors.teal,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        isUsernameAvailable.value && usernameError.isEmpty
+                            ? Icons.check_circle
+                            : Icons.error,
+                        color: isUsernameAvailable.value && usernameError.isEmpty
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                errorText: usernameError.value.isEmpty ? null : usernameError.value,
+                helperText: 'Start with letter, use letters and numbers only',
+              ),
+              onChanged: debouncedUsernameCheck,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Username is required';
+                }
+                if (!isUsernameAvailable.value) {
+                  return 'Username is not available';
+                }
+                return null;
+              },
+            )),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: email,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Email is required';
+                }
+                if (!GetUtils.isEmail(value)) {
+                  return 'Enter a valid email';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: password,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(Icons.lock_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              obscureText: true,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Password is required';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 32),
+            Obx(() => ElevatedButton(
+              onPressed: isLoading.value ? null : signUp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GroceryColors.teal,
+                padding: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: isLoading.value
+                  ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      'Create Account',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            )),
+            SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Already have an account? ',
+                  style: TextStyle(color: GroceryColors.grey400),
+                ),
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('Sign In'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isTablet = size.width > 600;
-    final padding = isTablet ? 32.0 : 16.0;
-
-    return Scaffold(
-        appBar: AppBar(
-          title: Text("Sign Up"),
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () => Get.back(),
-          ),
+    return AuthLayout(
+      title: 'Sign Up',
+      child: Center(
+        child: SingleChildScrollView(
+          child: _buildSignupForm(),
         ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 600),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(
-                    Icons.person_add,
-                    size: isTablet ? 120 : 80,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  SizedBox(height: isTablet ? 40 : 20),
-                  // First Name
-                  TextField(
-                    controller: firstName,
-                    decoration: InputDecoration(
-                      hintText: 'First Name',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabled: !isLoading,
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    style: TextStyle(fontSize: isTablet ? 18 : 16),
-                  ),
-                  SizedBox(height: isTablet ? 24 : 16),
-                  // Last Name
-                  TextField(
-                    controller: lastName,
-                    decoration: InputDecoration(
-                      hintText: 'Last Name',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabled: !isLoading,
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    style: TextStyle(fontSize: isTablet ? 18 : 16),
-                  ),
-                  SizedBox(height: isTablet ? 24 : 16),
-                  // Username
-                       TextField(
-                  controller: username,
-                  decoration: InputDecoration(
-                    hintText: 'Username (min. 4 characters)',
-                    prefixIcon: Icon(Icons.alternate_email),
-                    suffixIcon: isCheckingUsername
-                        ? Padding(
-                            padding: EdgeInsets.all(14),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Icon(
-                            isUsernameAvailable && usernameError == null
-                                ? Icons.check_circle
-                                : Icons.error,
-                            color: isUsernameAvailable && usernameError == null
-                                ? Colors.green
-                                : Colors.red,
-                          ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabled: !isLoading,
-                    errorText: usernameError,
-                    helperText: 'Start with letter, use letters and numbers only',
-                    helperMaxLines: 2,
-                  ),
-                  onChanged: debouncedUsernameCheck, // Using the correct function name
-                  style: TextStyle(fontSize: isTablet ? 18 : 16),
-                  textInputAction: TextInputAction.next,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.text,
-                ),
-                  // Email
-                  TextField(
-                    controller: email,
-                    decoration: InputDecoration(
-                      hintText: 'Email',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabled: !isLoading,
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    style: TextStyle(fontSize: isTablet ? 18 : 16),
-                  ),
-                  SizedBox(height: isTablet ? 24 : 16),
-                  // Password
-                  TextField(
-                    controller: password,
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabled: !isLoading,
-                    ),
-                    obscureText: true,
-                    style: TextStyle(fontSize: isTablet ? 18 : 16),
-                  ),
-                  SizedBox(height: isTablet ? 32 : 24),
-                  // Sign Up Button
-                  SizedBox(
-                    height: isTablet ? 60 : 50,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : signUp,
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isLoading
-                          ? SizedBox(
-                              height: isTablet ? 24 : 20,
-                              width: isTablet ? 24 : 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : Text(
-                              'Sign Up',
-                              style: TextStyle(fontSize: isTablet ? 18 : 16),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    // );
+      ),
+    );
   }
 }

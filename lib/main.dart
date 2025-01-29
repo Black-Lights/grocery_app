@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'services/theme_service.dart';
 import 'services/firestore_service.dart';
@@ -19,6 +20,17 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    print('Firebase initialized successfully');
+    
+    // Add Firebase Auth state listener for debugging
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user == null) {
+        print('User is currently signed out');
+      } else {
+        print('User is signed in - UID: ${user.uid}');
+      }
+    });
 
     // Initialize services
     final themeService = Get.put(ThemeService(), permanent: true);
@@ -41,17 +53,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Smart Grocery Manager',
       theme: Get.find<ThemeService>().getThemeData(),
       home: Wrapper(),
-      builder: (context, child) {
-        return GetMaterialApp(
-          title: 'Smart Grocery Manager',
-          theme: Get.find<ThemeService>().getThemeData(),
-          home: child,
-        );
-      },
+      debugShowCheckedModeBanner: false,
     );
   }
 }
