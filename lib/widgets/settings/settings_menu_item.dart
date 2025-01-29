@@ -8,6 +8,7 @@ class SettingsMenuItem extends StatelessWidget {
   final VoidCallback onTap;
   final bool isSelected;
   final bool isTablet;
+  final Widget? trailing;
 
   const SettingsMenuItem({
     Key? key,
@@ -17,6 +18,7 @@ class SettingsMenuItem extends StatelessWidget {
     required this.onTap,
     required this.isSelected,
     required this.isTablet,
+    this.trailing,
   }) : super(key: key);
 
   @override
@@ -30,8 +32,8 @@ class SettingsMenuItem extends StatelessWidget {
         color: isSelected ? GroceryColors.teal.withOpacity(0.1) : GroceryColors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected 
-              ? GroceryColors.teal 
+          color: isSelected
+              ? GroceryColors.teal
               : GroceryColors.skyBlue.withOpacity(0.5),
         ),
       ),
@@ -45,7 +47,7 @@ class SettingsMenuItem extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isSelected 
+                  color: isSelected
                       ? GroceryColors.teal.withOpacity(0.1)
                       : GroceryColors.skyBlue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -82,6 +84,11 @@ class SettingsMenuItem extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null)
+                Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: trailing!,
+                ),
               Icon(
                 Icons.chevron_right,
                 color: isSelected ? GroceryColors.teal : GroceryColors.grey400,

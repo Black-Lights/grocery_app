@@ -481,6 +481,8 @@ class FirestoreService {
             createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             notes: data['notes'],
+            brand: data['brand'],    // Added brand field
+            barcode: data['barcode'], // Added barcode field
           );
         }).toList();
 
@@ -554,6 +556,8 @@ class FirestoreService {
             createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             notes: data['notes'],
+            brand: data['brand'],    // Added brand field
+            barcode: data['barcode'], // Added barcode field
           );
         }).toList();
       });
@@ -592,6 +596,8 @@ class FirestoreService {
             createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
             notes: data['notes'],
+            brand: data['brand'],    // Added brand field
+            barcode: data['barcode'], // Added barcode field
           );
         }).toList();
       });
@@ -612,6 +618,8 @@ class FirestoreService {
       required double quantity,
       required String unit,
       String? notes,
+      String? brand,    // Added brand parameter
+      String? barcode,
     }
   ) async {
     try {
@@ -626,6 +634,8 @@ class FirestoreService {
         'quantity': quantity,
         'unit': unit,
         'notes': notes,
+        'brand': brand,    // Added brand field
+        'barcode': barcode,  // Added barcode field
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -647,6 +657,8 @@ class FirestoreService {
     double? quantity,
     String? unit,
     String? notes,
+    String? brand,    // Added brand parameter
+    String? barcode,  // Added barcode parameter
   }) async {
     try {
       final updates = <String, dynamic>{
@@ -664,6 +676,8 @@ class FirestoreService {
       if (quantity != null) updates['quantity'] = quantity;
       if (unit != null) updates['unit'] = unit;
       if (notes != null) updates['notes'] = notes;
+      if (brand != null) updates['brand'] = brand;       // Added brand update
+      if (barcode != null) updates['barcode'] = barcode; // Added barcode update
 
       await areasCollection
           .doc(areaId)

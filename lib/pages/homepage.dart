@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import '../services/notification_service.dart';
-import '../widgets/home/components/home_banners.dart';
+import '../services/theme_service.dart';
 import '../widgets/home/components/search_bar.dart';
 import '../widgets/home/components/storage_grid.dart';
+import '../widgets/home/components/home_banners.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import '../config/theme.dart';
 import 'shopping_list_page.dart';
 import 'settings_page.dart';
@@ -20,11 +21,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirestoreService _firestoreService = FirestoreService();
+  final FirestoreService _firestoreService = Get.find();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
-  bool get wantKeepAlive => true; // This will maintain the state
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -68,45 +69,68 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(
-              color: GroceryColors.navy,
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: GroceryColors.surface,
-              child: Icon(
-                Icons.person,
-                size: 50,
-                color: GroceryColors.navy,
-              ),
-            ),
-            accountName: Text(
-              user?.displayName ?? 'User',
-              style: TextStyle(
-                color: GroceryColors.surface,
-                fontSize: isTablet ? 18 : 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            accountEmail: Row(
-              children: [
-                Text(
-                  user?.email ?? '',
-                  style: TextStyle(
-                    color: GroceryColors.surface,
-                    fontSize: isTablet ? 16 : 14,
+          FutureBuilder<Map<String, dynamic>>(
+            future: _firestoreService.getUserData(),
+            builder: (context, snapshot) {
+              String displayName = 'User';
+              
+              if (snapshot.hasData && snapshot.data != null) {
+                final userData = snapshot.data!;
+                // Try to get full name first
+                if (userData['firstName']?.isNotEmpty == true || 
+                    userData['lastName']?.isNotEmpty == true) {
+                  displayName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+                }
+                // If no full name, use username
+                else if (userData['username']?.isNotEmpty == true) {
+                  displayName = userData['username'];
+                }
+              }
+
+              return UserAccountsDrawerHeader(
+                decoration: BoxDecoration(
+                  color: GroceryColors.navy,
+                ),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: GroceryColors.surface,
+                  child: Icon(
+                    Icons.person,
+                    size: 50,
+                    color: GroceryColors.navy,
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(
-                  user?.emailVerified ?? false ? Icons.verified : Icons.warning,
-                  size: isTablet ? 20 : 16,
-                  color: user?.emailVerified ?? false 
-                    ? GroceryColors.success 
-                    : GroceryColors.warning,
+                accountName: Text(
+                  displayName,
+                  style: TextStyle(
+                    color: GroceryColors.surface,
+                    fontSize: isTablet ? 18 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ],
-            ),
+                accountEmail: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        user?.email ?? '',
+                        style: TextStyle(
+                          color: GroceryColors.surface,
+                          fontSize: isTablet ? 16 : 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      user?.emailVerified ?? false ? Icons.verified : Icons.warning,
+                      size: isTablet ? 20 : 16,
+                      color: user?.emailVerified ?? false 
+                        ? GroceryColors.success 
+                        : GroceryColors.warning,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           ListTile(
             leading: Icon(Icons.home, color: GroceryColors.navy),
@@ -314,7 +338,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
     final isTablet = MediaQuery.of(context).size.width > 600;
 
     return GestureDetector(
@@ -324,18 +348,37 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
         backgroundColor: GroceryColors.background,
         drawer: _buildNavigationDrawer(),
         appBar: AppBar(
-          // Your existing AppBar...
+          backgroundColor: GroceryColors.navy,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.menu, color: GroceryColors.surface),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          ),
+          title: Text(
+            'My Grocery Storage',
+            style: TextStyle(
+              color: GroceryColors.surface,
+              fontSize: isTablet ? 24 : 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.shopping_cart, color: GroceryColors.surface),
+              onPressed: () => Get.to(() => ShoppingListPage()),
+            ),
+            SizedBox(width: 8),
+          ],
         ),
         body: SafeArea(
-          child: RefreshIndicator( // Add pull-to-refresh
+          child: RefreshIndicator(
             onRefresh: () async {
               await _checkAndInitializeAreas();
-              // Refresh notifications if needed
               final notificationService = Get.find<NotificationService>();
-              await notificationService.initialize();
+              await notificationService.initializeService();
             },
             child: CustomScrollView(
-              physics: AlwaysScrollableScrollPhysics(), // Enable scrolling even when content is small
+              physics: AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: Column(

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../../config/theme.dart';
+import 'package:get/get.dart';
 
 class HeaderSection extends StatelessWidget {
-  final bool isLargeScreen;
+  final bool isLargeScreen;  // Changed to isLargeScreen
   final VoidCallback onCameraPressed;
   final VoidCallback onGalleryPressed;
   final bool processing;
 
   const HeaderSection({
     Key? key,
-    required this.isLargeScreen,
+    required this.isLargeScreen,  // Changed to isLargeScreen
     required this.onCameraPressed,
     required this.onGalleryPressed,
     required this.processing,
@@ -17,89 +19,162 @@ class HeaderSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(isLargeScreen ? 32 : 16),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: Color(0xFF19647E),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+        color: GroceryColors.white,
+        boxShadow: [
+          BoxShadow(
+            color: GroceryColors.navy.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Text(
-            'Scan New Product',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isLargeScreen ? 28 : 24,
-              fontWeight: FontWeight.bold,
+          // Title Section
+          Container(
+            padding: EdgeInsets.all(isLargeScreen ? 32 : 24),
+            decoration: BoxDecoration(
+              color: GroceryColors.background,
+              border: Border(
+                bottom: BorderSide(
+                  color: GroceryColors.skyBlue.withOpacity(0.5),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.document_scanner_outlined,
+                  color: GroceryColors.teal,
+                  size: isLargeScreen ? 32 : 28,
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Scan Product',
+                        style: TextStyle(
+                          color: GroceryColors.navy,
+                          fontSize: isLargeScreen ? 28 : 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Add products by scanning labels or receipts',
+                        style: TextStyle(
+                          color: GroceryColors.grey400,
+                          fontSize: isLargeScreen ? 16 : 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'Take a photo or choose from gallery to add a new product',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: isLargeScreen ? 16 : 14,
+
+          // Action Buttons Section
+          Container(
+            padding: EdgeInsets.all(isLargeScreen ? 24 : 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Take Photo',
+                    onPressed: processing ? null : onCameraPressed,
+                    primary: true,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionButton(
+                    icon: Icons.photo_library_outlined,
+                    label: 'Gallery',
+                    onPressed: processing ? null : onGalleryPressed,
+                    primary: false,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildScanButton(
-                icon: Icons.camera_alt,
-                label: 'Take Photo',
-                onTap: processing ? null : onCameraPressed,
-                isLargeScreen: isLargeScreen,
+
+          // Processing Indicator
+          if (processing)
+            Container(
+              padding: EdgeInsets.only(bottom: isLargeScreen ? 24 : 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        GroceryColors.teal,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Processing image...',
+                    style: TextStyle(
+                      color: GroceryColors.grey400,
+                      fontSize: isLargeScreen ? 16 : 14,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: 16),
-              _buildScanButton(
-                icon: Icons.photo_library,
-                label: 'Gallery',
-                onTap: processing ? null : onGalleryPressed,
-                isLargeScreen: isLargeScreen,
-              ),
-            ],
-          ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildScanButton({
+  Widget _buildActionButton({
     required IconData icon,
     required String label,
-    required VoidCallback? onTap,
-    required bool isLargeScreen,
+    required VoidCallback? onPressed,
+    required bool primary,
   }) {
     return ElevatedButton(
-      onPressed: onTap,
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFFFFC857),
-        foregroundColor: Color(0xFF1F2041),
+        backgroundColor: primary ? GroceryColors.teal : GroceryColors.white,
+        foregroundColor: primary ? GroceryColors.white : GroceryColors.navy,
+        elevation: 0,
         padding: EdgeInsets.symmetric(
           horizontal: isLargeScreen ? 32 : 24,
-          vertical: isLargeScreen ? 16 : 12,
+          vertical: isLargeScreen ? 20 : 16,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: primary 
+                ? Colors.transparent 
+                : GroceryColors.skyBlue.withOpacity(0.5),
+          ),
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             icon,
             size: isLargeScreen ? 24 : 20,
           ),
-          SizedBox(width: 8),
+          SizedBox(width: 12),
           Text(
             label,
             style: TextStyle(
               fontSize: isLargeScreen ? 16 : 14,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

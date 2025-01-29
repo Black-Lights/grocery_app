@@ -12,6 +12,8 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? notes;
+  final String? brand;  // Added brand field
+  final String? barcode; // Added barcode field for future reference
 
   Product({
     required this.id,
@@ -25,6 +27,8 @@ class Product {
     required this.createdAt,
     required this.updatedAt,
     this.notes,
+    this.brand,    // Optional brand
+    this.barcode,  // Optional barcode
   });
 
   Map<String, dynamic> toMap() {
@@ -36,8 +40,28 @@ class Product {
       'quantity': quantity,
       'unit': unit,
       'notes': notes,
+      'brand': brand,    // Added to map
+      'barcode': barcode,  // Added to map
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
+  }
+
+  factory Product.fromMap(String id, Map<String, dynamic> map) {
+    return Product(
+      id: id,
+      name: map['name'] ?? '',
+      category: map['category'] ?? '',
+      manufacturingDate: (map['manufacturingDate'] as Timestamp).toDate(),
+      expiryDate: (map['expiryDate'] as Timestamp).toDate(),
+      quantity: (map['quantity'] as num).toDouble(),
+      unit: map['unit'] ?? '',
+      areaId: map['areaId'] ?? '',
+      notes: map['notes'],
+      brand: map['brand'],    // Added to constructor
+      barcode: map['barcode'],  // Added to constructor
+      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
+    );
   }
 }

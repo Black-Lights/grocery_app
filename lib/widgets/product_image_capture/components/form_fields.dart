@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../models/area.dart';
 import '../../../services/firestore_service.dart';
+import '../../../config/theme.dart';
+
 
 class FormFields extends StatelessWidget {
   final TextEditingController nameController;
@@ -9,6 +12,7 @@ class FormFields extends StatelessWidget {
   final TextEditingController unitController;
   final TextEditingController manufacturingController;
   final TextEditingController expiryController;
+  final TextEditingController notesController;
   final bool isLargeScreen;
   final String? areaId;
   final String? selectedAreaId;
@@ -22,6 +26,7 @@ class FormFields extends StatelessWidget {
     required this.unitController,
     required this.manufacturingController,
     required this.expiryController,
+    required this.notesController,
     required this.isLargeScreen,
     this.areaId,
     this.selectedAreaId,
@@ -34,222 +39,207 @@ class FormFields extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (areaId == null)
-          StreamBuilder<List<Area>>(
-            stream: firestoreService.getAreas(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFFFFC857),
-                  ),
-                );
-              }
+        if (areaId == null) ...[
+          _buildAreaSelector(),
+          SizedBox(height: 20),
+        ],
+        _buildNameField(),
+        SizedBox(height: 20),
+        _buildQuantityAndUnit(),
+        SizedBox(height: 20),
+        _buildDates(),
+        SizedBox(height: 20),
+        _buildNotesField(),
+      ],
+    );
+  }
 
-              return _buildDropdownField(
-                value: selectedAreaId,
-                items: snapshot.data!.map((Area area) {
-                  return DropdownMenuItem<String>(
-                    value: area.id,
-                    child: Text(area.name),
-                  );
-                }).toList(),
-                onChanged: onAreaSelected,
-                label: 'Select Area',
-              );
+  Widget _buildAreaSelector() {
+    return StreamBuilder<List<Area>>(
+      stream: firestoreService.getAreas(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(
+              color: GroceryColors.teal,
+            ),
+          );
+        }
+
+        return DropdownButtonFormField<String>(
+          value: selectedAreaId,
+          items: snapshot.data!.map((Area area) {
+            return DropdownMenuItem<String>(
+              value: area.id,
+              child: Text(area.name),
+            );
+          }).toList(),
+          onChanged: onAreaSelected,
+          decoration: InputDecoration(
+            labelText: 'Storage Area',
+            prefixIcon: Icon(Icons.storage_outlined),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please select a storage area';
+            }
+            return null;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNameField() {
+    return TextFormField(
+      controller: nameController,
+      decoration: InputDecoration(
+        labelText: 'Product Name',
+        prefixIcon: Icon(Icons.inventory_2_outlined),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter a product name';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildQuantityAndUnit() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: quantityController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Quantity',
+              prefixIcon: Icon(Icons.numbers),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter quantity';
+              }
+              if (double.tryParse(value) == null) {
+                return 'Please enter a valid number';
+              }
+              return null;
             },
           ),
-
-        if (areaId == null) SizedBox(height: 16),
-
-        _buildTextField(
-          controller: nameController,
-          label: 'Product Name',
         ),
-        SizedBox(height: 16),
-
-        Row(
-          children: [
-            Expanded(
-              child: _buildTextField(
-                controller: quantityController,
-                label: 'Quantity',
-                keyboardType: TextInputType.number,
-              ),
+        SizedBox(width: 16),
+        Expanded(
+          child: TextFormField(
+            controller: unitController,
+            decoration: InputDecoration(
+              labelText: 'Unit',
+              prefixIcon: Icon(Icons.straighten),
             ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildTextField(
-                controller: unitController,
-                label: 'Unit',
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16),
-
-        _buildDateField(
-          context: context,
-          controller: manufacturingController,
-          label: 'Manufacturing Date',
-          initialDate: DateTime.now(),
-          firstDate: DateTime(2000),
-          lastDate: DateTime.now(),
-        ),
-        SizedBox(height: 16),
-
-        _buildDateField(
-          context: context,
-          controller: expiryController,
-          label: 'Expiry Date',
-          initialDate: DateTime.now().add(Duration(days: 365)),
-          firstDate: DateTime.now(),
-          lastDate: DateTime(2100),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter unit';
+              }
+              return null;
+            },
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    TextInputType? keyboardType,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: isLargeScreen ? 16 : 14,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Color(0xFFFFC857),
-          fontSize: isLargeScreen ? 16 : 14,
+  Widget _buildDates() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildDateField(
+            label: 'Manufacturing Date',
+            controller: manufacturingController,
+            maxDate: DateTime.now(),
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
+        SizedBox(width: 16),
+        Expanded(
+          child: _buildDateField(
+            label: 'Expiry Date',
+            controller: expiryController,
+            minDate: DateTime.now(),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFFFFC857)),
-        ),
-        filled: true,
-        fillColor: Color(0xFF4B3F72).withOpacity(0.7),
-      ),
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required Function(String?) onChanged,
-    required String label,
-  }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      items: items,
-      onChanged: onChanged,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: isLargeScreen ? 16 : 14,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Color(0xFFFFC857),
-          fontSize: isLargeScreen ? 16 : 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFFFFC857)),
-        ),
-        filled: true,
-        fillColor: Color(0xFF4B3F72).withOpacity(0.7),
-      ),
-      dropdownColor: Color(0xFF4B3F72),
+      ],
     );
   }
 
   Widget _buildDateField({
-    required BuildContext context,
-    required TextEditingController controller,
     required String label,
-    required DateTime initialDate,
-    required DateTime firstDate,
-    required DateTime lastDate,
+    required TextEditingController controller,
+    DateTime? minDate,
+    DateTime? maxDate,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       readOnly: true,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: isLargeScreen ? 16 : 14,
-      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: Color(0xFFFFC857),
-          fontSize: isLargeScreen ? 16 : 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFF4B3F72)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xFFFFC857)),
-        ),
-        filled: true,
-        fillColor: Color(0xFF4B3F72).withOpacity(0.7),
-        suffixIcon: Icon(
-          Icons.calendar_today,
-          color: Color(0xFFFFC857),
-        ),
+        prefixIcon: Icon(Icons.calendar_today),
+        suffixIcon: controller.text.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear),
+                onPressed: () => controller.clear(),
+              )
+            : null,
       ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please select a date';
+        }
+        return null;
+      },
       onTap: () async {
+        // Get the current context from the build context
+        final context = Get.context ?? Get.overlayContext;
+        if (context == null) return;
+
         final date = await showDatePicker(
           context: context,
-          initialDate: initialDate,
-          firstDate: firstDate,
-          lastDate: lastDate,
+          initialDate: DateTime.tryParse(controller.text) ?? DateTime.now(),
+          firstDate: minDate ?? DateTime(2000),
+          lastDate: maxDate ?? DateTime(2100),
           builder: (context, child) {
             return Theme(
               data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.dark(
-                  primary: Color(0xFFFFC857),
-                  onPrimary: Color(0xFF1F2041),
-                  surface: Color(0xFF4B3F72),
-                  onSurface: Colors.white,
+                colorScheme: ColorScheme.light(
+                  primary: GroceryColors.teal,
+                  onPrimary: GroceryColors.white,
+                  surface: GroceryColors.white,
+                  onSurface: GroceryColors.navy,
                 ),
-                dialogBackgroundColor: Color(0xFF1F2041),
+                dialogBackgroundColor: GroceryColors.white,
               ),
               child: child!,
             );
           },
         );
+        
         if (date != null) {
           controller.text = DateFormat('yyyy-MM-dd').format(date);
         }
       },
+    );
+  }
+
+  Widget _buildNotesField() {
+    return TextFormField(
+      controller: notesController,
+      maxLines: isLargeScreen ? 8 : 5,
+      decoration: InputDecoration(
+        labelText: 'Notes (Optional)',
+        alignLabelWithHint: true,
+        prefixIcon: Padding(
+          padding: EdgeInsets.only(bottom: isLargeScreen ? 140 : 84),
+          child: Icon(Icons.notes),
+        ),
+      ),
     );
   }
 }

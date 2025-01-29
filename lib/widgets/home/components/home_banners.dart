@@ -44,124 +44,120 @@ class HomeBanners extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(color: GroceryColors.grey100),
             ),
-            color: GroceryColors.navy.withOpacity(0.05),
+            color: GroceryColors.teal.withOpacity(0.05),
             child: InkWell(
               onTap: () => _showNotificationsList(context, notifications),
               borderRadius: BorderRadius.circular(16),
               child: Padding(
                 padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
                 child: isSmallScreen
-                    ? _buildSmallNotificationView(notifications)
-                    : _buildLargeNotificationView(notifications),
+                    ? Center(
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: GroceryColors.teal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Stack(
+                            children: [
+                              Icon(
+                                Icons.notifications_outlined,
+                                color: GroceryColors.teal,
+                                size: 24,
+                              ),
+                              if (notifications.isNotEmpty && 
+                                  _notificationService.hasNewNotifications.value)
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: GroceryColors.error,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: GroceryColors.surface,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Stack(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: GroceryColors.teal.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.notifications_outlined,
+                                  color: GroceryColors.teal,
+                                  size: 24,
+                                ),
+                              ),
+                              if (notifications.isNotEmpty && 
+                                  _notificationService.hasNewNotifications.value)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: GroceryColors.error,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: GroceryColors.surface,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Notifications',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: GroceryColors.navy,
+                                  ),
+                                ),
+                                Text(
+                                  '${notifications.length} notification${notifications.length != 1 ? 's' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: GroceryColors.grey400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 20,
+                            color: GroceryColors.teal,
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSmallNotificationView(List<GroceryNotification> notifications) {
-    return Stack(
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: GroceryColors.navy.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.notifications_outlined,
-            color: GroceryColors.navy,
-            size: 24,
-          ),
-        ),
-        if (notifications.isNotEmpty && _notificationService.hasNewNotifications.value)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: GroceryColors.error,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: GroceryColors.surface,
-                  width: 2,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildLargeNotificationView(List<GroceryNotification> notifications) {
-    return Row(
-      children: [
-        Stack(
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: GroceryColors.navy.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.notifications_outlined,
-                color: GroceryColors.navy,
-                size: 24,
-              ),
-            ),
-            if (notifications.isNotEmpty && _notificationService.hasNewNotifications.value)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: GroceryColors.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: GroceryColors.surface,
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notifications',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: GroceryColors.navy,
-                ),
-              ),
-              Text(
-                '${notifications.length} notification${notifications.length != 1 ? 's' : ''}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: GroceryColors.grey400,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Icon(
-          Icons.arrow_forward_ios,
-          size: 20,
-          color: GroceryColors.navy,
-        ),
-      ],
     );
   }
 
@@ -181,73 +177,67 @@ class HomeBanners extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: isSmallScreen
-                ? _buildSmallScanView()
-                : _buildLargeScanView(),
+                ? Center(
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: GroceryColors.teal.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.document_scanner_outlined,
+                        color: GroceryColors.teal,
+                        size: 24,
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: GroceryColors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.document_scanner_outlined,
+                          color: GroceryColors.teal,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Scan Item',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: GroceryColors.navy,
+                              ),
+                            ),
+                            Text(
+                              'Scan to add items',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: GroceryColors.grey400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 20,
+                        color: GroceryColors.teal,
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSmallScanView() {
-    return Container(
-      padding: EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: GroceryColors.teal.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(
-        Icons.document_scanner_outlined,
-        color: GroceryColors.teal,
-        size: 24,
-      ),
-    );
-  }
-
-  Widget _buildLargeScanView() {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: GroceryColors.teal.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.document_scanner_outlined,
-            color: GroceryColors.teal,
-            size: 24,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Scan Item',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: GroceryColors.navy,
-                ),
-              ),
-              Text(
-                'Scan to add items',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: GroceryColors.grey400,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Icon(
-          Icons.arrow_forward_ios,
-          size: 20,
-          color: GroceryColors.teal,
-        ),
-      ],
     );
   }
 
