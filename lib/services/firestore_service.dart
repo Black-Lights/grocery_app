@@ -23,6 +23,20 @@ class FirestoreService {
         .collection('areas');
   }
 
+  Future<void> createUserProfile(
+    {required String userId, required Map<String, dynamic> data}) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .set(data, SetOptions(merge: true));
+    } catch (e) {
+      print('Error creating user profile: $e');
+      throw Exception('Failed to create user profile');
+    }
+  } 
+
+
    // Add this property for default areas
   final List<Map<String, String>> defaultAreas = [
     {

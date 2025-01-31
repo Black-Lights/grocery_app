@@ -108,11 +108,7 @@ void debouncedUsernameCheck(String value) {
   }
 
   Future<void> signUp() async {
-    if (isLoading.value) return;
-
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     try {
       isLoading.value = true;
@@ -137,8 +133,9 @@ void debouncedUsernameCheck(String value) {
       final firestoreService = FirestoreService();
       await firestoreService.initializeDefaultAreas();
 
-      // Navigate to email verification
-      Get.offAll(() => VerifyEmailPage());
+      // Navigate to verify email page
+      Get.off(() => VerifyEmailPage()); // Use Get.off to prevent back navigation
+      
     } on FirebaseAuthException catch (e) {
       String message;
       switch (e.code) {

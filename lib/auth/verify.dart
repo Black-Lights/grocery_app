@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
+import '../pages/homepage.dart';
 import 'auth_layout.dart';
+import 'welcome_page.dart';
 import 'wrapper.dart';
 
 class VerifyEmailPage extends StatefulWidget {
@@ -90,7 +92,14 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
       
       if (user?.emailVerified ?? false) {
         _timer.cancel();
-        Get.offAll(() => Wrapper());
+        Get.offAll(() => HomePage()); // Use Get.offAll to clear navigation stack
+      } else {
+        Get.snackbar(
+          'Not Verified',
+          'Please verify your email first',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
       print('Error checking email verification: $e');
@@ -99,9 +108,10 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     }
   }
 
-    Future<void> signOut() async {
+  Future<void> signOut() async {
     try {
       await _auth.signOut();
+      Get.offAll(() => WelcomePage()); // Use Get.offAll to clear navigation stack
       // The Wrapper will handle navigation
     } catch (e) {
       print('Error signing out: $e');

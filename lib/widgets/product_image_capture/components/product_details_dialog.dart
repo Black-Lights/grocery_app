@@ -8,6 +8,9 @@ import '../../../services/firestore_service.dart';
 import '../../../models/area.dart';
 import '../../../models/product.dart';
 import '../../../constants/food_categories.dart';
+import '../../common/category_selector.dart';
+import '../../common/storage_area_selector.dart';
+import '../../../services/product_image_service.dart';
 
 class ProductDetailsDialog extends StatefulWidget {
   final ProductDetails details;
@@ -43,11 +46,13 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
   late TextEditingController brandController;  // Added brand controller
   String? _selectedAreaId;
   final RxBool isLoading = false.obs;
-  final RxBool showCategoryDropdown = false.obs;
+  // final RxBool showCategoryDropdown = false.obs;
   final RxBool showRawText = false.obs;
-  final RxList<String> filteredCategories = <String>[].obs;
+  // final RxList<String> filteredCategories = <String>[].obs;
   final Rx<DateTime?> manufacturingDate = Rx<DateTime?>(null);
   final Rx<DateTime?> expiryDate = Rx<DateTime?>(null);
+  final ProductImageService _productImageService = ProductImageService();
+  final RxString productImagePath = ''.obs;
 
   @override
   void initState() {
@@ -57,6 +62,13 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     // Initialize with barcode data if available
     if (widget.details.barcode != null) {
       print('Barcode detected: ${widget.details.barcode}');
+    }
+    // Initialize with barcode data if available
+    if (widget.details.barcode != null) {
+      print('Barcode detected: ${widget.details.barcode}');
+      _loadProductInfo();
+    } else {
+      productImagePath.value = widget.imagePath;
     }
 
     nameController = TextEditingController(text: widget.details.name);
@@ -69,12 +81,56 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     manufacturingDate.value = widget.details.manufacturingDate;
     expiryDate.value = widget.details.expiryDate;
 
-    categoryController.addListener(_onCategoryChanged);
+    // categoryController.addListener(_onCategoryChanged);
+  }
+
+  Future<void> _loadProductInfo() async {
+    try {
+      if (widget.details.barcode == null) return;
+
+      // Get product image
+      final imagePath = await _productImageService.getProductImage(
+        widget.details.barcode!,
+        widget.imagePath,
+      );
+      
+      if (imagePath != null) {
+        productImagePath.value = imagePath;
+        print('Product image path: $imagePath');
+      }
+
+      // Get product info
+      final productInfo = await _productImageService.getProductInfo(
+        widget.details.barcode!,
+      );
+
+      if (productInfo != null) {
+        // Pre-fill fields with product info
+        setState(() {
+          nameController.text = productInfo['name'] ?? nameController.text;
+          brandController.text = productInfo['brand'] ?? brandController.text;
+          
+          // If categories are available, try to match with our categories
+          if (productInfo['categories'] != null) {
+            final categories = productInfo['categories'].toString().split(',');
+            for (final category in categories) {
+              final cleanCategory = category.trim();
+              if (foodCategories.contains(cleanCategory)) {
+                categoryController.text = cleanCategory;
+                break;
+              }
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading product info: $e');
+    }
   }
 
   @override
   void dispose() {
-    categoryController.removeListener(_onCategoryChanged);
+    // categoryController.removeListener(_onCategoryChanged);
     nameController.dispose();
     quantityController.dispose();
     unitController.dispose();
@@ -84,25 +140,25 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     super.dispose();
   }
 
-  void _onCategoryChanged() {
-    final query = categoryController.text.toLowerCase();
-    if (query.isEmpty) {
-      showCategoryDropdown.value = false;
-      filteredCategories.clear();
-    } else {
-      filteredCategories.value = foodCategories
-          .where((category) => 
-              category.toLowerCase().contains(query))
-          .toList();
-      showCategoryDropdown.value = true;
-    }
-  }
+  // void _onCategoryChanged() {
+  //   final query = categoryController.text.toLowerCase();
+  //   if (query.isEmpty) {
+  //     showCategoryDropdown.value = false;
+  //     filteredCategories.clear();
+  //   } else {
+  //     filteredCategories.value = foodCategories
+  //         .where((category) => 
+  //             category.toLowerCase().contains(query))
+  //         .toList();
+  //     showCategoryDropdown.value = true;
+  //   }
+  // }
 
-  void _selectCategory(String category) {
-    categoryController.text = category;
-    showCategoryDropdown.value = false;
-    filteredCategories.clear();
-  }
+  // void _selectCategory(String category) {
+  //   categoryController.text = category;
+  //   showCategoryDropdown.value = false;
+  //   filteredCategories.clear();
+  // }
 
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
@@ -265,20 +321,6 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     );
   }
 
-  Widget _buildImagePreview() {
-    return Container(
-      height: widget.isTablet ? 300 : 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: GroceryColors.skyBlue.withOpacity(0.5)),
-        image: DecorationImage(
-          image: FileImage(File(widget.imagePath)),
-          fit: BoxFit.cover,
-        ),
-      ),
-    );
-  }
 
   Widget _buildRawTextSection() {
     return Column(
@@ -326,180 +368,125 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     );
   }
 
-  Widget _buildAreaSelector() {
-    return StreamBuilder<List<Area>>(
-      stream: widget.firestoreService.getAreas(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(
-            child: CircularProgressIndicator(
-              color: GroceryColors.teal,
-            ),
-          );
-        }
+  
 
-        final areas = snapshot.data!;
-        
-        // Check if current selectedAreaId exists in areas
-        if (_selectedAreaId != null && 
-            !areas.any((area) => area.id == _selectedAreaId)) {
-          _selectedAreaId = null;  // Reset if not found
-        }
+  Widget _buildCategoryField() {
+  return CategorySelector(
+    controller: categoryController,
+    isTablet: widget.isTablet,
+    onCategorySelected: (category) {
+      // Handle category selection if needed
+      print('Selected category: $category');
+    },
+  );
+}
 
-        return DropdownButtonFormField<String>(
-          value: _selectedAreaId,
-          hint: Text('Select Storage Area'),
-          decoration: InputDecoration(
-            labelText: 'Storage Area',
-            prefixIcon: Icon(Icons.storage_outlined),
+  Widget _buildImagePreview() {
+    return Obx(() {
+      final imagePath = productImagePath.value;
+      
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: GroceryColors.skyBlue.withOpacity(0.5),
+            width: 1,
           ),
-          items: areas.map((area) {
-            return DropdownMenuItem<String>(
-              value: area.id,
-              child: Text(area.name),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedAreaId = value;
-            });
-            widget.onAreaSelected(value);
-          },
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a storage area';
-            }
-            return null;
-          },
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: imagePath.isEmpty
+              ? _buildEmptyImagePlaceholder()
+              : imagePath.startsWith('http')
+                  ? _buildNetworkImage(imagePath)
+                  : _buildLocalImage(imagePath),
+        ),
+      );
+    });
+  }
+
+  Widget _buildEmptyImagePlaceholder() {
+    return Container(
+      color: GroceryColors.background,
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported,
+          size: 50,
+          color: GroceryColors.grey400,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNetworkImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.contain,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
+                : null,
+            valueColor: AlwaysStoppedAnimation<Color>(GroceryColors.teal),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('Error loading network image: $error');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 40,
+                color: GroceryColors.error,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Failed to load image',
+                style: TextStyle(
+                  color: GroceryColors.error,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildCategoryField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: categoryController,
-          decoration: InputDecoration(
-            labelText: 'Category',
-            hintText: 'Start typing to search categories',
-            prefixIcon: Icon(Icons.category_outlined),
-            suffixIcon: categoryController.text.isNotEmpty
-                ? IconButton(
-                    icon: Icon(Icons.clear),
-                    onPressed: () {
-                      categoryController.clear();
-                      showCategoryDropdown.value = false;
-                      filteredCategories.clear();
-                    },
-                  )
-                : null,
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please select a category';
-            }
-            if (!foodCategories.contains(value)) {
-              return 'Please select a valid category';
-            }
-            return null;
-          },
-        ),
-        Obx(() {
-          if (!showCategoryDropdown.value || filteredCategories.isEmpty) {
-            return const SizedBox.shrink();
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(top: 4),
-            constraints: BoxConstraints(
-              maxHeight: widget.isTablet ? 200 : 150,
-            ),
-            decoration: BoxDecoration(
-              color: GroceryColors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: GroceryColors.skyBlue.withOpacity(0.5),
+  Widget _buildLocalImage(String path) {
+    return Image.file(
+      File(path),
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        print('Error loading local image: $error');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported,
+                size: 40,
+                color: GroceryColors.error,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: GroceryColors.navy.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+              SizedBox(height: 8),
+              Text(
+                'Invalid image',
+                style: TextStyle(
+                  color: GroceryColors.error,
+                  fontSize: 12,
                 ),
-              ],
-            ),
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: filteredCategories.length,
-              itemBuilder: (context, index) {
-                final category = filteredCategories[index];
-                final isSelected = category == categoryController.text;
-
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _selectCategory(category),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? GroceryColors.teal.withOpacity(0.1)
-                            : Colors.transparent,
-                        border: Border(
-                          bottom: index < filteredCategories.length - 1
-                              ? BorderSide(
-                                  color: GroceryColors.skyBlue.withOpacity(0.5),
-                                )
-                              : BorderSide.none,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.category_outlined,
-                            size: 20,
-                            color: isSelected
-                                ? GroceryColors.teal
-                                : GroceryColors.grey400,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              category,
-                              style: TextStyle(
-                                fontSize: widget.isTablet ? 16 : 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? GroceryColors.teal
-                                    : GroceryColors.navy,
-                              ),
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(
-                              Icons.check,
-                              size: 20,
-                              color: GroceryColors.teal,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        }),
-      ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -507,12 +494,16 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     return Row(
       children: [
         Expanded(
+          flex: 2,
           child: TextFormField(
             controller: quantityController,
             keyboardType: TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: 'Quantity',
               prefixIcon: Icon(Icons.numbers),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -527,11 +518,15 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
         ),
         SizedBox(width: 16),
         Expanded(
+          flex: 1,
           child: TextFormField(
             controller: unitController,
             decoration: InputDecoration(
               labelText: 'Unit',
               prefixIcon: Icon(Icons.straighten),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -684,6 +679,20 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     );
   }
 
+  Widget _buildAreaSelector() {
+    return StorageAreaSelector(
+      initialValue: _selectedAreaId,
+      isTablet: widget.isTablet,
+      onAreaSelected: (value) {
+        setState(() {
+          _selectedAreaId = value;
+        });
+        widget.onAreaSelected(value);
+      },
+      firestoreService: widget.firestoreService,
+    );
+  }
+
   Widget _buildNotesField() {
     return TextFormField(
       controller: notesController,
@@ -806,6 +815,8 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     );
   }
 
+  
+  // Update the tablet layout to use _buildImagePreview
   Widget _buildTabletLayout(double width, double height) {
     return Row(
       children: [
@@ -826,16 +837,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
                 flex: 8,
                 child: Container(
                   margin: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: GroceryColors.skyBlue.withOpacity(0.5),
-                    ),
-                    image: DecorationImage(
-                      image: FileImage(File(widget.imagePath)),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  child: _buildImagePreview(),
                 ),
               ),
               // Barcode Container (20%)
@@ -896,23 +898,14 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
 
   Widget _buildMobileLayout() {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Image Container
+          // Image Preview with Loading States
           Container(
             height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: GroceryColors.skyBlue.withOpacity(0.5),
-              ),
-              image: DecorationImage(
-                image: FileImage(File(widget.imagePath)),
-                fit: BoxFit.cover,
-              ),
-            ),
+            child: _buildImagePreview(),
           ),
           SizedBox(height: 16),
           
@@ -923,11 +916,16 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
           // Form Fields
           _buildAreaSelector(),
           SizedBox(height: 16),
+          
+          // Product Name Field
           TextFormField(
             controller: nameController,
             decoration: InputDecoration(
               labelText: 'Product Name',
               prefixIcon: Icon(Icons.inventory_2_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -937,16 +935,51 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
             },
           ),
           SizedBox(height: 16),
-          _buildBrandField(),
+          
+          // Brand Field
+          TextFormField(
+            controller: brandController,
+            decoration: InputDecoration(
+              labelText: 'Brand',
+              prefixIcon: Icon(Icons.business),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
           SizedBox(height: 16),
+          
+          // Category Field
           _buildCategoryField(),
           SizedBox(height: 16),
+          
+          // Quantity and Unit Fields
           _buildQuantityAndUnit(),
           SizedBox(height: 16),
+          
+          // Manufacturing and Expiry Dates
           _buildDates(),
           SizedBox(height: 16),
-          _buildNotesField(),
+          
+          // Notes Field
+          TextFormField(
+            controller: notesController,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: 'Notes (Optional)',
+              alignLabelWithHint: true,
+              prefixIcon: Padding(
+                padding: EdgeInsets.only(bottom: 64),
+                child: Icon(Icons.notes),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
           SizedBox(height: 16),
+          
+          // Raw Text Section
           _buildRawTextSection(),
         ],
       ),

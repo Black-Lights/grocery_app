@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';  // Add this for PlatformException
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';  // Add this for FieldValue
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/theme.dart';
+import '../services/firestore_service.dart';
 import 'auth_layout.dart';
 import 'signup.dart';
 import 'forgot_password.dart';
-import 'verify.dart';  // Add this import
+import 'verify.dart';
+import '../pages/homepage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // final GoogleSignIn _googleSignIn = GoogleSignIn();
   final RxBool isLoading = false.obs;
   final RxBool isGoogleLoading = false.obs;
 
@@ -28,56 +32,123 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       isGoogleLoading.value = true;
+
+      // Initialize GoogleSignIn
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: [
+          'email',
+          'profile',
+        ],
+        signInOption: SignInOption.standard,
+      );
+
+      // Sign out first to ensure clean state
+      await googleSignIn.signOut();
       
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Start sign in flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       
       if (googleUser == null) {
-        isGoogleLoading.value = false;
+        // User canceled the sign-in flow
+        print('User canceled Google Sign In');
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      try {
+        // Get auth details
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      await _auth.signInWithCredential(credential);
-    } on FirebaseAuthException catch (e) {
-      String message;
-      switch (e.code) {
-        case 'account-exists-with-different-credential':
-          message = 'An account already exists with this email';
-          break;
-        case 'invalid-credential':
-          message = 'Error occurred while accessing credentials. Try again.';
-          break;
-        case 'operation-not-allowed':
-          message = 'Google sign in has not been enabled for this app.';
-          break;
-        case 'user-disabled':
-          message = 'Your account has been disabled.';
-          break;
-        default:
-          message = e.message ?? 'An error occurred';
+        // Create credential
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // Sign in to Firebase
+        final UserCredential userCredential = 
+            await FirebaseAuth.instance.signInWithCredential(credential);
+
+        final user = userCredential.user;
+        if (user == null) throw Exception('Failed to sign in with Google');
+
+        // Check if this is a new user
+        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+          await _createUserDocument(user, googleUser);
+        }
+
+        // Navigate to HomePage
+        Get.offAll(() => HomePage());
+
+      } catch (e) {
+        print('Error during Google authentication: $e');
+        throw Exception('Failed to authenticate with Google');
       }
+
+    } catch (e) {
+      print('Error during Google Sign In: $e');
+      String message = 'Failed to sign in with Google. Please try again.';
+      
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'account-exists-with-different-credential':
+            message = 'An account already exists with this email';
+            break;
+          case 'invalid-credential':
+            message = 'Invalid credentials. Please try again';
+            break;
+          case 'operation-not-allowed':
+            message = 'Google sign in is not enabled';
+            break;
+          case 'user-disabled':
+            message = 'This account has been disabled';
+            break;
+          case 'user-not-found':
+            message = 'No account found with this email';
+            break;
+        }
+      }
+
       Get.snackbar(
-        'Error',
+        'Sign In Failed',
         message,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
-      );
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'An unexpected error occurred',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
+        duration: Duration(seconds: 5),
       );
     } finally {
       isGoogleLoading.value = false;
+    }
+  }
+
+  Future<void> _createUserDocument(User user, GoogleSignInAccount googleUser) async {
+    try {
+      final firestoreService = Get.find<FirestoreService>();
+      
+      // Split display name into first and last name
+      final nameParts = googleUser.displayName?.split(' ') ?? ['', ''];
+      final firstName = nameParts.first;
+      final lastName = nameParts.length > 1 ? nameParts.last : '';
+      
+      // Create user document
+      await firestoreService.createUserProfile(
+        userId: user.uid,
+        data: {
+          'firstName': firstName,
+          'lastName': lastName,
+          'email': googleUser.email,
+          'photoURL': googleUser.photoUrl,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'provider': 'google',
+        },
+      );
+
+      // Initialize default areas
+      await firestoreService.initializeDefaultAreas();
+    } catch (e) {
+      print('Error creating user document: $e');
+      // Continue anyway as the auth was successful
     }
   }
 
@@ -92,7 +163,6 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 3),
       );
       return;
     }
@@ -102,27 +172,29 @@ class _LoginPageState extends State<LoginPage> {
       
       print('Attempting to sign in with email: ${email.text.trim()}');
       
-      // Clear any existing user session
-      await FirebaseAuth.instance.signOut();
-      
       // Attempt sign in
       final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email.text.trim(),
         password: password.text,
       );
 
-      // Check if user exists
-      if (userCredential.user == null) {
+      final user = userCredential.user;
+      if (user == null) {
         throw FirebaseAuthException(
           code: 'user-not-found',
           message: 'No user found with this email',
         );
       }
 
-      print('Successfully signed in user: ${userCredential.user?.uid}');
+      print('Successfully signed in user: ${user.uid}');
 
-      // The Wrapper will handle navigation based on email verification status
-      // No need to navigate manually here
+      // Check email verification
+      if (!user.emailVerified) {
+        Get.off(() => VerifyEmailPage()); // Use Get.off to prevent back navigation
+      } else {
+        // Clear all previous routes and go to HomePage
+        Get.offAll(() => HomePage());
+      }
       
     } on FirebaseAuthException catch (e) {
       print('FirebaseAuthException during login: ${e.code} - ${e.message}');

@@ -21,16 +21,19 @@ class Wrapper extends StatelessWidget {
           );
         }
 
+        // Check if user is logged in and verified
         if (snapshot.hasData && snapshot.data != null) {
           print('Wrapper: User is logged in. Email verified: ${snapshot.data!.emailVerified}');
+          
           if (snapshot.data!.emailVerified) {
             return HomePage();
           }
           return VerifyEmailPage();
         }
 
+        // No user logged in, show welcome page
         print('Wrapper: No user logged in, showing WelcomePage');
-        return WelcomePage();  // Show welcome page instead of login directly
+        return WelcomePage();
       },
     );
   }
