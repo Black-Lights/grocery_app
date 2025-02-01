@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/theme.dart';
 import '../services/firestore_service.dart';
+import '../widgets/navigation/app_scaffold.dart';
 import 'auth_layout.dart';
 import 'signup.dart';
 import 'forgot_password.dart';
@@ -193,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
         Get.off(() => VerifyEmailPage()); // Use Get.off to prevent back navigation
       } else {
         // Clear all previous routes and go to HomePage
-        Get.offAll(() => HomePage());
+        Get.offAll(() => AppScaffold());
       }
       
     } on FirebaseAuthException catch (e) {

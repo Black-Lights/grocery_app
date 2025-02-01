@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import '../pages/homepage.dart';
-import 'welcome_page.dart';  // Import welcome page instead of login
+import '../widgets/navigation/app_scaffold.dart';  // Import AppScaffold instead of homepage
+import 'welcome_page.dart';
 import 'verify.dart';
 
 class Wrapper extends StatelessWidget {
@@ -26,7 +26,7 @@ class Wrapper extends StatelessWidget {
           print('Wrapper: User is logged in. Email verified: ${snapshot.data!.emailVerified}');
           
           if (snapshot.data!.emailVerified) {
-            return HomePage();
+            return AppScaffold(); // Return AppScaffold instead of HomePage
           }
           return VerifyEmailPage();
         }

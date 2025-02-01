@@ -8,8 +8,12 @@ import 'storage_card.dart';
 
 class StorageGrid extends StatelessWidget {
   final FirestoreService _firestoreService = FirestoreService();
+  final bool isEditing;
 
-  StorageGrid({Key? key}) : super(key: key);
+  StorageGrid({
+    Key? key,
+    required this.isEditing,
+  }) : super(key: key);
 
   void _handleEditArea(BuildContext context, Area area) {
     final nameController = TextEditingController(text: area.name);
@@ -95,6 +99,213 @@ class StorageGrid extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAddAreaCard(BuildContext context) {
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: GroceryColors.teal.withOpacity(0.5),
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showAddAreaDialog(context),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_circle_outline,
+              size: isTablet ? 48 : 40,
+              color: GroceryColors.teal,
+            ),
+            SizedBox(height: isTablet ? 16 : 12),
+            Text(
+              'Add Area',
+              style: TextStyle(
+                fontSize: isTablet ? 18 : 16,
+                color: GroceryColors.teal,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddAreaDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
+    Get.dialog(
+      AlertDialog(
+        title: Text(
+          'Add Storage Area',
+          style: TextStyle(
+            color: GroceryColors.navy,
+            fontSize: isTablet ? 24 : 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Area Name',
+                hintText: 'e.g., Refrigerator, Freezer',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Optional description',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: GroceryColors.grey400,
+                fontSize: isTablet ? 16 : 14,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isNotEmpty) {
+                try {
+                  await _firestoreService.addArea(
+                    nameController.text.trim(),
+                    descriptionController.text.trim(),
+                  );
+                  Get.back();
+                  Get.snackbar(
+                    'Success',
+                    'Area added successfully',
+                    backgroundColor: GroceryColors.success,
+                    colorText: GroceryColors.white,
+                    snackPosition: SnackPosition.BOTTOM,
+                    margin: const EdgeInsets.all(16),
+                  );
+                } catch (e) {
+                  Get.snackbar(
+                    'Error',
+                    'Failed to add area',
+                    backgroundColor: GroceryColors.error,
+                    colorText: GroceryColors.white,
+                    snackPosition: SnackPosition.BOTTOM,
+                    margin: const EdgeInsets.all(16),
+                  );
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTablet = MediaQuery.of(context).size.width > 600;
+
+    return StreamBuilder<List<Area>>(
+      stream: _firestoreService.getAreas(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading areas',
+              style: TextStyle(
+                color: GroceryColors.error,
+                fontSize: isTablet ? 18 : 16,
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(GroceryColors.teal),
+            ),
+          );
+        }
+
+        final areas = snapshot.data ?? [];
+        
+        if (areas.isEmpty && !isEditing) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.storage,
+                  size: isTablet ? 80 : 64,
+                  color: GroceryColors.grey300,
+                ),
+                SizedBox(height: isTablet ? 24 : 16),
+                Text(
+                  'No storage areas yet',
+                  style: TextStyle(
+                    fontSize: isTablet ? 22 : 18,
+                    color: GroceryColors.grey400,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                Text(
+                  'Tap the + button to add your first storage area',
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    color: GroceryColors.grey300,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return GridView.builder(
+          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isTablet ? 3 : 2,
+            crossAxisSpacing: isTablet ? 24 : 16,
+            mainAxisSpacing: isTablet ? 24 : 16,
+            childAspectRatio: isTablet ? 1.2 : 1,
+          ),
+          itemCount: isEditing ? areas.length + 1 : areas.length,
+          itemBuilder: (context, index) {
+            if (index == areas.length && isEditing) {
+              return _buildAddAreaCard(context);
+            }
+            return StorageCard(
+              area: areas[index],
+              isEditing: isEditing,
+              onEdit: (area) => _handleEditArea(context, area),
+              onDelete: (area) => _handleDeleteArea(context, area),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -209,86 +420,6 @@ class StorageGrid extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isTablet = MediaQuery.of(context).size.width > 600;
-
-    return StreamBuilder<List<Area>>(
-      stream: _firestoreService.getAreas(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error loading areas',
-              style: TextStyle(
-                color: GroceryColors.error,
-                fontSize: isTablet ? 18 : 16,
-              ),
-            ),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(GroceryColors.teal),
-            ),
-          );
-        }
-
-        final areas = snapshot.data ?? [];
-        
-        if (areas.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.storage,
-                  size: isTablet ? 80 : 64,
-                  color: GroceryColors.grey300,
-                ),
-                SizedBox(height: isTablet ? 24 : 16),
-                Text(
-                  'No storage areas yet',
-                  style: TextStyle(
-                    fontSize: isTablet ? 22 : 18,
-                    color: GroceryColors.grey400,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: isTablet ? 16 : 12),
-                Text(
-                  'Tap the + button to add your first storage area',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: GroceryColors.grey300,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return GridView.builder(
-          padding: EdgeInsets.all(isTablet ? 24 : 16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isTablet ? 3 : 2,
-            crossAxisSpacing: isTablet ? 24 : 16,
-            mainAxisSpacing: isTablet ? 24 : 16,
-            childAspectRatio: isTablet ? 1.2 : 1,
-          ),
-          itemCount: areas.length,
-          itemBuilder: (context, index) => StorageCard(
-            area: areas[index],
-            onEdit: (area) => _handleEditArea(context, area),
-            onDelete: (area) => _handleDeleteArea(context, area),
-          ),
-        );
-      },
     );
   }
 }

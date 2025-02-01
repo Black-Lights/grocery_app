@@ -9,6 +9,9 @@ import '../services/shopping_service.dart';
 import '../widgets/shopping/components/shopping_input.dart';
 import '../widgets/shopping/components/shopping_suggestions.dart';
 import '../widgets/shopping/components/shopping_list.dart';
+import '../widgets/navigation/app_scaffold.dart';
+import '../widgets/navigation/bottom_navigation.dart';
+
 class ShoppingListPage extends StatefulWidget {
   const ShoppingListPage({super.key});
 
@@ -155,64 +158,90 @@ class _ShoppingListPageState extends State<ShoppingListPage> {
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 600;
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        backgroundColor: GroceryColors.background,
-        appBar: AppBar(
-          title: Text(
-            'Shopping List',
-            style: TextStyle(
-              fontSize: isTablet ? 24 : 20,
-              fontWeight: FontWeight.w600,
+    return WillPopScope(
+      onWillPop: () async {
+        Get.offAll(() => AppScaffold(initialTab: 0));
+        return false;
+      },
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Scaffold(
+          backgroundColor: GroceryColors.background,
+          appBar: AppBar(
+            backgroundColor: GroceryColors.navy,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: GroceryColors.surface),
+              onPressed: () => Get.offAll(() => AppScaffold(initialTab: 0)),
+            ),
+            title: Text(
+              'Shopping List',
+              style: TextStyle(
+                fontSize: isTablet ? 24 : 20,
+                fontWeight: FontWeight.w600,
+                color: GroceryColors.surface,
+              ),
+            ),
+            actions: [
+              Tooltip(
+                message: 'Clear completed items',
+                child: IconButton(
+                  icon: Icon(
+                    Icons.cleaning_services_outlined,
+                    size: isTablet ? 28 : 24,
+                    color: GroceryColors.surface,
+                  ),
+                  onPressed: _clearCompletedItems,
+                ),
+              ),
+              SizedBox(width: 8),
+            ],
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Input Section
+                Container(
+                  color: GroceryColors.white,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ShoppingInput(
+                        itemController: _itemController,
+                        quantityController: _quantityController,
+                        unitController: _unitController,
+                        isLoading: _isLoading,
+                        onSearch: _searchProducts,
+                        onAdd: _addItem,
+                        isSearching: _isSearching,
+                      ),
+                      if (_suggestions.isNotEmpty)
+                        ShoppingSuggestions(
+                          suggestions: _suggestions,
+                          onSuggestionSelected: _handleSuggestionSelected,
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Shopping List
+                Expanded(
+                  child: ShoppingList(),
+                ),
+              ],
             ),
           ),
-          actions: [
-            Tooltip(
-              message: 'Clear completed items',
-              child: IconButton(
-                icon: Icon(
-                  Icons.cleaning_services_outlined,
-                  size: isTablet ? 28 : 24,
-                  color: GroceryColors.white,
-                ),
-                onPressed: _clearCompletedItems,
-              ),
-            ),
-            SizedBox(width: 8),
-          ],
-        ),
-        body: Column(
-          children: [
-            // Input Section
-            Container(
-              color: GroceryColors.white,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ShoppingInput(
-                    itemController: _itemController,
-                    quantityController: _quantityController,
-                    unitController: _unitController,
-                    isLoading: _isLoading,
-                    onSearch: _searchProducts,
-                    onAdd: _addItem,
-                    isSearching: _isSearching,
-                  ),
-                  if (_suggestions.isNotEmpty)
-                    ShoppingSuggestions(
-                      suggestions: _suggestions,
-                      onSuggestionSelected: _handleSuggestionSelected,
-                    ),
-                ],
-              ),
-            ),
-
-            // Shopping List
-            Expanded(
-              child: ShoppingList(),
-            ),
-          ],
+          bottomNavigationBar: BottomNavigation(
+            currentIndex: 0,
+            onTap: (index) {
+              // Add a slight delay to ensure proper navigation
+              Future.delayed(Duration(milliseconds: 100), () {
+                Get.offAll(
+                  () => AppScaffold(initialTab: index),
+                  transition: Transition.fadeIn,
+                );
+              });
+            },
+          ),
         ),
       ),
     );

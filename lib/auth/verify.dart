@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
-import '../pages/homepage.dart';
 import 'auth_layout.dart';
 import 'welcome_page.dart';
 import 'wrapper.dart';
+import '../widgets/navigation/app_scaffold.dart';
 
 class VerifyEmailPage extends StatefulWidget {
   @override
@@ -92,7 +92,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
       
       if (user?.emailVerified ?? false) {
         _timer.cancel();
-        Get.offAll(() => HomePage()); // Use Get.offAll to clear navigation stack
+        Get.offAll(() => AppScaffold()); // Change HomePage to AppScaffold
       } else {
         Get.snackbar(
           'Not Verified',
@@ -111,8 +111,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   Future<void> signOut() async {
     try {
       await _auth.signOut();
-      Get.offAll(() => WelcomePage()); // Use Get.offAll to clear navigation stack
-      // The Wrapper will handle navigation
+      Get.offAll(() => WelcomePage());
     } catch (e) {
       print('Error signing out: $e');
       Get.snackbar(

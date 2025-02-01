@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../config/theme.dart';
-import '../../services/text_recognition_service.dart';
-import '../../services/firestore_service.dart';
-import 'components/header_section.dart';
-import 'components/recent_products_section.dart';
-import 'components/image_source_dialog.dart';
-import 'components/product_details_dialog.dart';
+import '../../config/theme.dart';  // Updated path
+import '../../services/text_recognition_service.dart';  // Updated path
+import '../../services/firestore_service.dart';  // Updated path
+import 'components/header_section.dart';  // Updated path
+import 'components/recent_products_section.dart';  // Updated path
+import 'components/image_source_dialog.dart';  // Updated path
+import 'components/product_details_dialog.dart';  // Updated path
+
 
 class ProductImageCapture extends StatefulWidget {
   final String? areaId;
@@ -93,61 +94,26 @@ class _ProductImageCaptureState extends State<ProductImageCapture> {
 
     return Scaffold(
       backgroundColor: GroceryColors.background,
-      appBar: AppBar(
-        backgroundColor: GroceryColors.navy,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: GroceryColors.white),
-          onPressed: () => Get.back(),
-        ),
-        // actions: [
-        //   Obx(() {
-        //     if (_processing.value) {
-        //       return Center(
-        //         child: Padding(
-        //           padding: EdgeInsets.only(right: 16),
-        //           child: SizedBox(
-        //             width: 20,
-        //             height: 20,
-        //             child: CircularProgressIndicator(
-        //               strokeWidth: 2,
-        //               valueColor: AlwaysStoppedAnimation<Color>(
-        //                 GroceryColors.teal,
-        //               ),
-        //             ),
-        //           ),
-        //         ),
-        //       );
-        //     }
-        //     return IconButton(
-        //       icon: Icon(
-        //         Icons.add_photo_alternate_outlined,
-        //         color: GroceryColors.navy,
-        //       ),
-        //       onPressed: _showImageSourceDialog,
-        //       tooltip: 'Add Product',
-        //     );
-        //   }),
-        //   SizedBox(width: 8),
-        // ],
-      ),
-      body: Column(
-        children: [
-          Obx(() => HeaderSection(
-            isLargeScreen: isLargeScreen,
-            onCameraPressed: () => _processImage(ImageSource.camera),
-            onGalleryPressed: () => _processImage(ImageSource.gallery),
-            processing: _processing.value,
-          )),
-          Expanded(
-            child: RecentProductsSection(
-              areaId: widget.areaId,
+      // Remove the AppBar since it's now a tab
+      body: SafeArea(
+        child: Column(
+          children: [
+            Obx(() => HeaderSection(
               isLargeScreen: isLargeScreen,
-              firestoreService: _firestoreService,
-              onAddProduct: _showImageSourceDialog,
+              onCameraPressed: () => _processImage(ImageSource.camera),
+              onGalleryPressed: () => _processImage(ImageSource.gallery),
+              processing: _processing.value,
+            )),
+            Expanded(
+              child: RecentProductsSection(
+                areaId: widget.areaId,
+                isLargeScreen: isLargeScreen,
+                firestoreService: _firestoreService,
+                onAddProduct: _showImageSourceDialog,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: Obx(() {
         if (_processing.value) return SizedBox.shrink();
