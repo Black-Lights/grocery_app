@@ -10,21 +10,22 @@ import 'services/theme_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
 import 'auth/wrapper.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     // Initialize storage
     await GetStorage.init();
-    
+
     // Initialize Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
     print('Firebase initialized successfully');
-    
+
     // Add Firebase Auth state listener for debugging
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
@@ -34,18 +35,19 @@ Future<void> main() async {
       }
     });
 
-    // Initialize services
+    // Initialize services using GetX
     final themeService = Get.put(ThemeService(), permanent: true);
     final firestoreService = Get.put(FirestoreService(), permanent: true);
-    final shoppingService = Get.put(ShoppingService(), permanent: true); // Add this line
+    final shoppingService = Get.put(ShoppingService(), permanent: true);
     final notificationService = Get.put(
       NotificationService(firestoreService: firestoreService),
       permanent: true,
     );
-    
+
     await notificationService.initializeService();
 
-    runApp(const MyApp());
+    // Wrap the app with Riverpod
+    runApp(ProviderScope(child: MyApp()));
   } catch (e) {
     print('Error initializing app: $e');
   }

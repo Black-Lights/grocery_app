@@ -131,7 +131,7 @@ class FirestoreService {
   }) async {
     try {
       // First check if username is already taken by another user
-      if (await _isUsernameExists(username)) {
+      if (await isUsernameExists(username)) {
         throw Exception('Username already exists');
       }
 
@@ -148,25 +148,19 @@ class FirestoreService {
   }
 
   // Check if username exists
-  Future<bool> _isUsernameExists(String username) async {
-    try {
-      // Skip check if username hasn't changed
-      final currentData = await getUserData();
-      if (currentData['username'] == username) {
-        return false;
-      }
+  Future<bool> isUsernameExists(String username) async {
+  try {
+    final querySnapshot = await _firestore
+        .collection('users')
+        .where('username', isEqualTo: username.toLowerCase())
+        .get();
 
-      final querySnapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username.toLowerCase())
-          .get();
-      
-      return querySnapshot.docs.isNotEmpty;
-    } catch (e) {
-      print('Error checking username: $e');
-      throw Exception('Failed to check username availability');
-    }
+    return querySnapshot.docs.isNotEmpty;
+  } catch (e) {
+    print('Error checking username: $e');
+    throw Exception('Failed to check username availability');
   }
+}
 
   // Get single area
   Future<Area?> getArea(String areaId) async {
@@ -509,6 +503,7 @@ class FirestoreService {
       throw Exception('Failed to get all products');
     }
   }
+  
 
 
   // Add new area

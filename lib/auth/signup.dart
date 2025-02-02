@@ -1,35 +1,31 @@
 import 'dart:async';
-
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
+import '../providers/auth_provider.dart';
 import '../config/theme.dart';
-import '../services/firestore_service.dart';
+import '../widgets/navigation/app_scaffold.dart';
 import 'auth_layout.dart';
 import 'verify.dart';
 
-class SignUpPage extends StatefulWidget {
+class SignUpPage extends ConsumerStatefulWidget {
   @override
   _SignUpPageState createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController firstName = TextEditingController();
   final TextEditingController lastName = TextEditingController();
   final TextEditingController username = TextEditingController();
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
-  
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+  Timer? _debounceTimer;
   final RxBool isLoading = false.obs;
   final RxBool isCheckingUsername = false.obs;
   final RxBool isUsernameAvailable = true.obs;
   final RxString usernameError = RxString('');
-  Timer? _debounceTimer;
 
   @override
   void dispose() {
@@ -41,17 +37,24 @@ class _SignUpPageState extends State<SignUpPage> {
     password.dispose();
     super.dispose();
   }
-void debouncedUsernameCheck(String value) {
-    if (value.isEmpty) {
-      usernameError.value = 'Username is required';
-      isUsernameAvailable.value = false;
-      return;
-    }
 
-    // Cancel previous timer if it exists
-    _debounceTimer?.cancel();
+  /// Validates username based on predefined rules:
+  /// - At least 4 characters long
+  /// - Must start with a letter
+  /// - Can only contain alphanumeric characters
+  String? validateUsername(String value) {
+    if (value.isEmpty) return 'Username is required';
+    if (value.length < 4) return 'Username must be at least 4 characters';
+    if (!RegExp(r'^[a-zA-Z]').hasMatch(value)) return 'Username must start with a letter';
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) return 'Username can only contain letters and numbers';
+    return null;
+  }
 
-    // Basic validation first
+  /// Checks username availability in Firestore after a delay (debouncing).
+  /// Prevents multiple network requests when user is typing.
+  void debouncedUsernameCheck(String value) {
+    if (_debounceTimer != null) _debounceTimer!.cancel();
+
     final validationError = validateUsername(value);
     if (validationError != null) {
       usernameError.value = validationError;
@@ -59,117 +62,108 @@ void debouncedUsernameCheck(String value) {
       return;
     }
 
-    // Set timer for API call
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      checkUsername(value);
+    _debounceTimer = Timer(Duration(milliseconds: 500), () async {
+      final firestoreService = ref.read(firestoreServiceProvider);
+
+      isCheckingUsername.value = true;
+      usernameError.value = '';
+
+      try {
+        final exists = await firestoreService.isUsernameExists(value);
+
+        isCheckingUsername.value = false;
+        isUsernameAvailable.value = !exists;
+        usernameError.value = exists ? 'Username is already taken' : '';
+
+        if (exists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Username is already taken"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        isCheckingUsername.value = false;
+        isUsernameAvailable.value = false;
+        usernameError.value = 'Error checking username availability';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error checking username availability"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     });
   }
 
-  String? validateUsername(String username) {
-    if (username.isEmpty) {
-      return 'Username is required';
-    }
-
-    if (username.length < 4) {
-      return 'Username must be at least 4 characters';
-    }
-
-    if (!RegExp(r'^[a-zA-Z]').hasMatch(username)) {
-      return 'Username must start with a letter';
-    }
-
-    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(username)) {
-      return 'Username can only contain letters and numbers';
-    }
-
-    return null;
-  }
-
-  Future<void> checkUsername(String value) async {
-    isCheckingUsername.value = true;
-    usernameError.value = '';
-
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: value.toLowerCase())
-          .get();
-
-      isUsernameAvailable.value = snapshot.docs.isEmpty;
-      if (!snapshot.docs.isEmpty) {
-        usernameError.value = 'Username is already taken';
-      }
-    } catch (e) {
-      usernameError.value = 'Error checking username availability';
-      isUsernameAvailable.value = false;
-    } finally {
-      isCheckingUsername.value = false;
-    }
-  }
-
+  /// Handles user signup process:
+  /// - Validates input fields
+  /// - Ensures username is unique
+  /// - Registers user using Firebase Auth via Riverpod
+  /// - Stores user details in Firestore
+  /// - Sends email verification
   Future<void> signUp() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate() || !isUsernameAvailable.value) return;
+
+    final authRepo = ref.read(authRepositoryProvider);
+    final firestoreService = ref.read(firestoreServiceProvider);
+
+    // ✅ Set Firebase locale before signing up to prevent warnings
+    authRepo.setFirebaseLocale('en');
+
+    isLoading.value = true;
 
     try {
-      isLoading.value = true;
+    final userCredential = await authRepo.signUp(email.text.trim(), password.text);
 
-      // Create user in Firebase Auth
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email.text.trim(),
-        password: password.text,
-      );
-
-      // Create user document in Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'firstName': firstName.text.trim(),
-        'lastName': lastName.text.trim(),
-        'username': username.text.trim().toLowerCase(),
-        'email': email.text.trim().toLowerCase(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Initialize default areas
-      final firestoreService = FirestoreService();
-      await firestoreService.initializeDefaultAreas();
-
-      // Navigate to verify email page
-      Get.off(() => VerifyEmailPage()); // Use Get.off to prevent back navigation
-      
-    } on FirebaseAuthException catch (e) {
-      String message;
-      switch (e.code) {
-        case 'weak-password':
-          message = 'The password provided is too weak';
-          break;
-        case 'email-already-in-use':
-          message = 'An account already exists with this email';
-          break;
-        case 'invalid-email':
-          message = 'Invalid email address';
-          break;
-        default:
-          message = e.message ?? 'An error occurred';
-      }
-      Get.snackbar(
-        'Error',
-        message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'An unexpected error occurred',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } finally {
-      isLoading.value = false;
+    if (userCredential?.user != null) {
+      await authRepo.sendEmailVerification();
+      Get.off(() => VerifyEmailPage()); // ✅ Ensures navigation to verify page
     }
+  } on FirebaseAuthException catch (e) {
+    String errorMessage;
+
+    switch (e.code) {
+      case 'too-many-requests':
+        errorMessage = 'Too many requests. Try again later.';
+        break;
+      case 'operation-not-allowed':
+        errorMessage = 'Sign-up is disabled for this account.';
+        break;
+      case 'user-disabled':
+        errorMessage = 'This account has been disabled.';
+        break;
+      default:
+        errorMessage = e.message ?? 'An unexpected error occurred.';
+    }
+
+    Get.snackbar(
+      'Error',
+      errorMessage,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+    );
+
+    // ✅ If an email was still sent, allow navigation to VerifyEmailPage
+    if (e.code == 'too-many-requests' || e.code == 'operation-not-allowed') {
+      Get.off(() => VerifyEmailPage());
+    }
+  } catch (e) {
+    Get.snackbar(
+      'Error',
+      'An unexpected error occurred.',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
+  }
+
+
+
   Widget _buildSignupForm() {
     return Container(
       constraints: BoxConstraints(maxWidth: 400),
@@ -329,7 +323,7 @@ void debouncedUsernameCheck(String value) {
             ),
             SizedBox(height: 32),
             Obx(() => ElevatedButton(
-              onPressed: isLoading.value ? null : signUp,
+              onPressed: isLoading.value ? null :  signUp,
               style: ElevatedButton.styleFrom(
                 backgroundColor: GroceryColors.teal,
                 padding: EdgeInsets.symmetric(vertical: 16),

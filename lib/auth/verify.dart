@@ -1,21 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
+import '../providers/auth_provider.dart';
 import 'auth_layout.dart';
 import 'welcome_page.dart';
 import 'wrapper.dart';
 import '../widgets/navigation/app_scaffold.dart';
 
-class VerifyEmailPage extends StatefulWidget {
+class VerifyEmailPage extends ConsumerStatefulWidget {
   @override
   _VerifyEmailPageState createState() => _VerifyEmailPageState();
 }
 
-class _VerifyEmailPageState extends State<VerifyEmailPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  late User? user;
+class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
+  User? user;
   late Timer _timer;
   final RxBool isLoading = false.obs;
   final RxBool isResending = false.obs;
@@ -25,9 +26,17 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
   @override
   void initState() {
     super.initState();
-    user = _auth.currentUser;
-    sendVerificationEmail();
-    startVerificationCheck();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authRepo = ref.read(authRepositoryProvider);
+      user = authRepo.getCurrentUser();
+
+      // ✅ Only send verification email if it wasn't already sent in signUp()
+      if (!(user?.emailVerified ?? false)) {
+        sendVerificationEmail();
+      }
+
+      startVerificationCheck();
+    });
   }
 
   void startVerificationCheck() {
@@ -47,7 +56,8 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
     try {
       isResending.value = true;
-      await user?.sendEmailVerification();
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.sendEmailVerification();
       
       // Start cooldown timer
       canResend.value = false;
@@ -70,13 +80,13 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to send verification email',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      // Get.snackbar(
+      //   'Error',
+      //   'Failed to send verification email',
+      //   backgroundColor: Colors.red,
+      //   colorText: Colors.white,
+      //   snackPosition: SnackPosition.BOTTOM,
+      // );
     } finally {
       isResending.value = false;
     }
@@ -87,20 +97,22 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
     try {
       isLoading.value = true;
-      await user?.reload();
-      user = _auth.currentUser;
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.reloadUser();
+      user = authRepo.getCurrentUser();
       
       if (user?.emailVerified ?? false) {
         _timer.cancel();
         Get.offAll(() => AppScaffold()); // Change HomePage to AppScaffold
-      } else {
-        Get.snackbar(
-          'Not Verified',
-          'Please verify your email first',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
-      }
+      } 
+      // else {
+      //   Get.snackbar(
+      //     'Not Verified',
+      //     'Please verify your email first',
+      //     backgroundColor: Colors.orange,
+      //     colorText: Colors.white,
+      //   );
+      // }
     } catch (e) {
       print('Error checking email verification: $e');
     } finally {
@@ -110,7 +122,8 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
 
   Future<void> signOut() async {
     try {
-      await _auth.signOut();
+      final authRepo = ref.read(authRepositoryProvider);
+      await authRepo.signOut();
       Get.offAll(() => WelcomePage());
     } catch (e) {
       print('Error signing out: $e');
@@ -123,6 +136,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
       );
     }
   }
+
 
   Widget _buildVerificationContent() {
     return Container(

@@ -1,40 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:get/get.dart';
-import '../widgets/navigation/app_scaffold.dart';  // Import AppScaffold instead of homepage
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 import 'welcome_page.dart';
 import 'verify.dart';
+import '../widgets/navigation/app_scaffold.dart';
 
-class Wrapper extends StatelessWidget {
-  const Wrapper({super.key});
-  
+class Wrapper extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
 
-        // Check if user is logged in and verified
-        if (snapshot.hasData && snapshot.data != null) {
-          print('Wrapper: User is logged in. Email verified: ${snapshot.data!.emailVerified}');
-          
-          if (snapshot.data!.emailVerified) {
-            return AppScaffold(); // Return AppScaffold instead of HomePage
-          }
+    return authState.when(
+      data: (user) {
+        if (user == null) {
+          return WelcomePage();
+        } else if (!user.emailVerified) {
           return VerifyEmailPage();
+        } else {
+          return AppScaffold();
         }
-
-        // No user logged in, show welcome page
-        print('Wrapper: No user logged in, showing WelcomePage');
-        return WelcomePage();
       },
+      loading: () => Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (_, __) => WelcomePage(),
     );
   }
 }
