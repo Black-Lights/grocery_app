@@ -115,15 +115,6 @@ class _ProductImageCaptureState extends State<ProductImageCapture> {
           ],
         ),
       ),
-      floatingActionButton: Obx(() {
-        if (_processing.value) return SizedBox.shrink();
-        return FloatingActionButton(
-          onPressed: _showImageSourceDialog,
-          backgroundColor: GroceryColors.teal,
-          child: Icon(Icons.add_a_photo, color: GroceryColors.white),
-          tooltip: 'Add Product',
-        );
-      }),
     );
   }
 }

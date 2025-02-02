@@ -4,6 +4,8 @@ import 'package:get_storage/get_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'pages/shopping_list_page.dart';
+import 'services/shopping_service.dart';
 import 'services/theme_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
@@ -35,6 +37,7 @@ Future<void> main() async {
     // Initialize services
     final themeService = Get.put(ThemeService(), permanent: true);
     final firestoreService = Get.put(FirestoreService(), permanent: true);
+    final shoppingService = Get.put(ShoppingService(), permanent: true); // Add this line
     final notificationService = Get.put(
       NotificationService(firestoreService: firestoreService),
       permanent: true,
@@ -58,6 +61,12 @@ class MyApp extends StatelessWidget {
       theme: Get.find<ThemeService>().getThemeData(),
       home: Wrapper(),
       debugShowCheckedModeBanner: false,
+      getPages: [
+        GetPage(
+          name: '/shopping-list',
+          page: () => ShoppingListPage(),
+        ),
+      ],
     );
   }
 }

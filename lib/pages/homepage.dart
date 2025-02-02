@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
             onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
           title: Text(
-            'My Grocery Storage',
+            'Fresh Flow',
             style: TextStyle(
               color: GroceryColors.surface,
               fontSize: isTablet ? 24 : 20,

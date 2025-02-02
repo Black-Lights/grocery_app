@@ -4,7 +4,7 @@ import '../../../config/theme.dart';
 import '../../../models/area.dart';
 import '../../../models/product.dart';
 import '../../../services/firestore_service.dart';
-import 'product_card.dart';
+import 'recent_product_card.dart';
 import 'empty_state.dart';
 
 class RecentProductsSection extends StatelessWidget {
@@ -192,9 +192,8 @@ class RecentProductsSection extends StatelessWidget {
       child: GridView.builder(
         padding: EdgeInsets.all(isLargeScreen ? 24 : 16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: isLargeScreen ? 3 : 2,
-          // Adjust the aspect ratio based on screen size
-          childAspectRatio: isLargeScreen ? 1.3 : 0.85,
+          crossAxisCount: isLargeScreen ? 4 : 2, // Increased columns for large screen
+          childAspectRatio: isLargeScreen ? 0.7 : 0.65, // Adjusted ratios
           crossAxisSpacing: isLargeScreen ? 24 : 16,
           mainAxisSpacing: isLargeScreen ? 24 : 16,
         ),
@@ -216,13 +215,49 @@ class RecentProductsSection extends StatelessWidget {
             product: product,
             area: area,
             isLargeScreen: isLargeScreen,
-            onTap: () {
-              // You can implement product detail view here
-              // Get.to(() => ProductDetailPage(product: product));
-            },
           );
         },
       ),
     );
   }
+
+  // Widget _buildProductGrid(List<Product> products, List<Area> areas) {
+  //   return Container(
+  //     color: GroceryColors.background,
+  //     child: GridView.builder(
+  //       padding: EdgeInsets.all(isLargeScreen ? 24 : 16),
+  //       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+  //         crossAxisCount: isLargeScreen ? 3 : 2,
+  //         // Adjust the aspect ratio based on screen size
+  //         childAspectRatio: isLargeScreen ? 1.3 : 0.85,
+  //         crossAxisSpacing: isLargeScreen ? 24 : 16,
+  //         mainAxisSpacing: isLargeScreen ? 24 : 16,
+  //       ),
+  //       itemCount: products.length,
+  //       itemBuilder: (context, index) {
+  //         final product = products[index];
+  //         final area = areas.firstWhere(
+  //           (area) => area.id == product.areaId,
+  //           orElse: () => Area(
+  //             id: '',
+  //             name: 'Unknown Area',
+  //             description: '',
+  //             createdAt: DateTime.now(),
+  //             updatedAt: DateTime.now(),
+  //           ),
+  //         );
+
+  //         return ProductCard(
+  //           product: product,
+  //           area: area,
+  //           isLargeScreen: isLargeScreen,
+  //           onTap: () {
+  //             // You can implement product detail view here
+  //             // Get.to(() => ProductDetailPage(product: product));
+  //           },
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 }

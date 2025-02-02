@@ -55,7 +55,6 @@ class AreaSidebar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header - Only show in tablet mode
           if (isTablet)
             Container(
               padding: const EdgeInsets.all(20),
@@ -88,7 +87,6 @@ class AreaSidebar extends StatelessWidget {
               ),
             ),
 
-          // Areas List
           Expanded(
             child: StreamBuilder<List<Area>>(
               stream: FirestoreService().getAreas(),
@@ -113,7 +111,15 @@ class AreaSidebar extends StatelessWidget {
                   );
                 }
 
-                final areas = snapshot.data ?? [];
+                final allArea = Area(
+                  id: 'all',
+                  name: 'All Items',
+                  description: 'View all products',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                );
+
+                final areas = [allArea, ...snapshot.data ?? []];
 
                 return ListView.builder(
                   padding: EdgeInsets.symmetric(vertical: 8),
@@ -121,6 +127,7 @@ class AreaSidebar extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final area = areas[index];
                     final isSelected = area.id == currentArea.id;
+                    final isAllItems = area.id == 'all';
                     
                     return Material(
                       color: Colors.transparent,
@@ -141,7 +148,7 @@ class AreaSidebar extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            _getAreaIcon(area.name),
+                            isAllItems ? Icons.all_inbox : _getAreaIcon(area.name),
                             color: isSelected
                                 ? GroceryColors.teal
                                 : GroceryColors.navy,

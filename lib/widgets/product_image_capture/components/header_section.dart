@@ -65,7 +65,7 @@ class HeaderSection extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Add products by scanning labels or receipts',
+                        'Add products by scanning labels',
                         style: TextStyle(
                           color: GroceryColors.grey400,
                           fontSize: isLargeScreen ? 16 : 14,
