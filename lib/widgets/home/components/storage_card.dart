@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'dart:math' show pi, sin;
+import 'package:get/get.dart';
 import '../../../models/area.dart';
 import '../../../models/product.dart';
 import '../../../services/firestore_service.dart';
+import '../../../pages/area_detail_page.dart';
 import '../../../config/theme.dart';
+import 'dart:math' show pi, sin;
 
-class StorageCard extends StatefulWidget {
+class StorageCard extends StatefulWidget {  // Change to StatefulWidget
   final Area area;
   final bool isEditing;
   final Function(Area) onEdit;
@@ -27,31 +27,14 @@ class StorageCard extends StatefulWidget {
 
 class _StorageCardState extends State<StorageCard> with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
-  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
     super.initState();
     _shakeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _updateShakeAnimation();
-  }
-
-  @override
-  void didUpdateWidget(StorageCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _updateShakeAnimation();
-  }
-
-  void _updateShakeAnimation() {
-    if (widget.isEditing) {
-      _shakeController.repeat();
-    } else {
-      _shakeController.stop();
-      _shakeController.reset();
-    }
+      duration: Duration(milliseconds: 1500),
+    )..repeat();
   }
 
   @override
@@ -81,18 +64,19 @@ class _StorageCardState extends State<StorageCard> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 600;
+    final FirestoreService _firestoreService = FirestoreService();
 
     Widget card = Hero(
       tag: 'area-${widget.area.id}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: widget.isEditing ? null : () => context.push('/area/${widget.area.id}'),
+          onTap: widget.isEditing ? null : () => Get.to(() => AreaDetailPage(area: widget.area)),
           borderRadius: BorderRadius.circular(16),
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: isTablet ? 280 : double.infinity,
-              maxHeight: isTablet ? 280 : double.infinity,
+              maxWidth: isTablet ? 280 : double.infinity,  // Limit width on tablet
+              maxHeight: isTablet ? 280 : double.infinity,  // Limit height on tablet
             ),
             decoration: BoxDecoration(
               color: GroceryColors.white,
@@ -217,7 +201,6 @@ class _StorageCardState extends State<StorageCard> with SingleTickerProviderStat
                       ),
                       child: Stack(
                         children: [
-                          // Edit Button
                           Positioned(
                             top: 8,
                             right: 8,
@@ -229,22 +212,21 @@ class _StorageCardState extends State<StorageCard> with SingleTickerProviderStat
                                   BoxShadow(
                                     color: GroceryColors.navy.withOpacity(0.1),
                                     blurRadius: 4,
-                                    offset: const Offset(0, 2),
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: IconButton(
                                 icon: Icon(Icons.edit, color: GroceryColors.teal),
                                 onPressed: () => widget.onEdit(widget.area),
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(
+                                padding: EdgeInsets.all(8),
+                                constraints: BoxConstraints(
                                   minWidth: 36,
                                   minHeight: 36,
                                 ),
                               ),
                             ),
                           ),
-                          // Delete Button
                           Positioned(
                             top: 8,
                             left: 8,
@@ -256,15 +238,15 @@ class _StorageCardState extends State<StorageCard> with SingleTickerProviderStat
                                   BoxShadow(
                                     color: GroceryColors.navy.withOpacity(0.1),
                                     blurRadius: 4,
-                                    offset: const Offset(0, 2),
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: IconButton(
                                 icon: Icon(Icons.close, color: GroceryColors.error),
                                 onPressed: () => widget.onDelete(widget.area),
-                                padding: const EdgeInsets.all(8),
-                                constraints: const BoxConstraints(
+                                padding: EdgeInsets.all(8),
+                                constraints: BoxConstraints(
                                   minWidth: 36,
                                   minHeight: 36,
                                 ),
@@ -282,7 +264,7 @@ class _StorageCardState extends State<StorageCard> with SingleTickerProviderStat
       ),
     );
 
-    // Apply shake animation when in edit mode
+    // Apply continuous shake animation when in edit mode
     if (widget.isEditing) {
       return AnimatedBuilder(
         animation: _shakeController,
