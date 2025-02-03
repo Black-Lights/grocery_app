@@ -1,35 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/notification.dart';
-import '../../services/notification_service.dart';
+import '../../providers/notifications_provider.dart';
 import '../../config/theme.dart';
 
-class NotificationList extends StatelessWidget {
-  final NotificationService _notificationService = Get.find();
+class NotificationList extends ConsumerWidget {
+  const NotificationList({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final notifications = _notificationService.recentNotifications;
-      
-      if (notifications.isEmpty) {
-        return Center(
-          child: Text('No notifications'),
-        );
-      }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationsAsync = ref.watch(notificationsStreamProvider);
+    
+    return notificationsAsync.when(
+      data: (notifications) {
+        if (notifications.isEmpty) {
+          return const Center(
+            child: Text('No notifications'),
+          );
+        }
 
-      return ListView.builder(
-        itemCount: notifications.length,
-        itemBuilder: (context, index) {
-          final notification = notifications[index];
-          return NotificationCard(notification: notification);
-        },
-      );
-    });
+        return ListView.builder(
+          itemCount: notifications.length,
+          itemBuilder: (context, index) {
+            final notification = notifications[index];
+            return NotificationCard(notification: notification);
+          },
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stack) => Center(
+        child: Text('Error: $error'),
+      ),
+    );
   }
 }
 
-class NotificationCard extends StatelessWidget {
+class NotificationCard extends ConsumerWidget {
   final GroceryNotification notification;
 
   const NotificationCard({
@@ -38,25 +47,46 @@ class NotificationCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         leading: _getNotificationIcon(),
-        title: Text(notification.title),
-        subtitle: Text(notification.message),
-        trailing: Text(
-          _formatTimestamp(notification.timestamp),
+        title: Text(
+          notification.title,
           style: TextStyle(
-            color: GroceryColors.grey400,
-            fontSize: 12,
+            color: GroceryColors.navy,
+            fontWeight: notification.isRead ? FontWeight.normal : FontWeight.bold,
           ),
         ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notification.message,
+              style: TextStyle(
+                color: GroceryColors.grey400,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _formatTimestamp(notification.timestamp),
+              style: TextStyle(
+                color: GroceryColors.grey400,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
         onTap: () {
+          // Mark as read when tapped
+          ref.read(notificationActionsProvider).markAsRead(notification.id);
+          
+          // Navigate to the appropriate screen
           if (notification.productId != null) {
-            Get.toNamed('/product/${notification.productId}');
+            context.push('/product/${notification.productId}');
           } else if (notification.areaId != null) {
-            Get.toNamed('/area/${notification.areaId}');
+            context.push('/area/${notification.areaId}');
           }
         },
       ),
@@ -80,13 +110,26 @@ class NotificationCard extends StatelessWidget {
         iconData = Icons.summarize_outlined;
         color = GroceryColors.teal;
         break;
-      default:
-        iconData = Icons.notifications_outlined;
-        color = GroceryColors.navy;
+      case NotificationType.productAdded:
+        iconData = Icons.add_circle_outline;
+        color = GroceryColors.success;
+        break;
+      case NotificationType.productUpdated:
+        iconData = Icons.edit_outlined;
+        color = GroceryColors.teal;
+        break;
+      case NotificationType.productRemoved:
+        iconData = Icons.remove_circle_outline;
+        color = GroceryColors.error;
+        break;
     }
 
-    return CircleAvatar(
-      backgroundColor: color.withOpacity(0.1),
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Icon(iconData, color: color),
     );
   }

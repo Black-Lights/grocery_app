@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../services/firestore_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../widgets/navigation/left_drawer.dart';
 import '../widgets/home/components/storage_grid.dart';
 import '../config/theme.dart';
-import '../widgets/navigation/left_drawer.dart';
-import 'shopping_list_page.dart';
+import '../providers/firestore_provider.dart';
 
-class HomePage extends StatefulWidget {
+// Provider for edit mode state
+final isEditingProvider = StateProvider<bool>((ref) => false);
+
+class HomePage extends ConsumerStatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
-  _HomePageState createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
-  final FirestoreService _firestoreService = Get.find();
+class _HomePageState extends ConsumerState<HomePage> with AutomaticKeepAliveClientMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final RxBool _isEditing = false.obs;
 
   @override
   bool get wantKeepAlive => true;
@@ -27,15 +29,17 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
 
   Future<void> _checkAndInitializeAreas() async {
     try {
-      await _firestoreService.initializeDefaultAreas();
+      final firestoreService = ref.read(firestoreProvider);
+      await firestoreService.initializeDefaultAreas();
     } catch (e) {
       print('Error checking/initializing areas: $e');
     }
   }
 
   Widget _buildHeader() {
+    final isEditing = ref.watch(isEditingProvider);
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -47,13 +51,13 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
               color: GroceryColors.navy,
             ),
           ),
-          Obx(() => IconButton(
+          IconButton(
             icon: Icon(
-              _isEditing.value ? Icons.done : Icons.edit,
+              isEditing ? Icons.done : Icons.edit,
               color: GroceryColors.teal,
             ),
-            onPressed: () => _isEditing.toggle(),
-          )),
+            onPressed: () => ref.read(isEditingProvider.notifier).state = !isEditing,
+          ),
         ],
       ),
     );
@@ -63,13 +67,14 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   Widget build(BuildContext context) {
     super.build(context);
     final isTablet = MediaQuery.of(context).size.width > 600;
+    final isEditing = ref.watch(isEditingProvider);
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: GroceryColors.background,
-        drawer: LeftDrawer(),
+        drawer: const LeftDrawer(),
         appBar: AppBar(
           backgroundColor: GroceryColors.navy,
           elevation: 0,
@@ -92,28 +97,26 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                 color: GroceryColors.surface,
                 size: isTablet ? 28 : 24,
               ),
-              onPressed: () => Get.to(() => ShoppingListPage()),
+              onPressed: () => Navigator.pushNamed(context, '/shopping-list'),
               tooltip: 'Shopping List',
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
           ],
         ),
         body: SafeArea(
           child: RefreshIndicator(
-            onRefresh: () async {
-              await _checkAndInitializeAreas();
-            },
+            onRefresh: _checkAndInitializeAreas,
             child: CustomScrollView(
-              physics: AlwaysScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: _buildHeader(),
                 ),
                 SliverFillRemaining(
                   hasScrollBody: true,
-                  child: Obx(() => StorageGrid(
-                    isEditing: _isEditing.value,
-                  )),
+                  child: StorageGrid(
+                    isEditing: isEditing,
+                  ),
                 ),
               ],
             ),
@@ -123,94 +126,3 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     );
   }
 }
-
-//   void _showAddAreaDialog() {
-//     final nameController = TextEditingController();
-//     final descriptionController = TextEditingController();
-//     final isTablet = MediaQuery.of(context).size.width > 600;
-    
-//     Get.dialog(
-//       AlertDialog(
-//         title: Text(
-//           'Add Storage Area',
-//           style: TextStyle(
-//             color: GroceryColors.navy,
-//             fontSize: isTablet ? 24 : 20,
-//             fontWeight: FontWeight.bold,
-//           ),
-//         ),
-//         content: Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             TextField(
-//               controller: nameController,
-//               decoration: InputDecoration(
-//                 labelText: 'Area Name',
-//                 labelStyle: TextStyle(color: GroceryColors.grey400),
-//                 hintText: 'e.g., Refrigerator, Freezer',
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//               ),
-//             ),
-//             SizedBox(height: 16),
-//             TextField(
-//               controller: descriptionController,
-//               decoration: InputDecoration(
-//                 labelText: 'Description (Optional)',
-//                 labelStyle: TextStyle(color: GroceryColors.grey400),
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
-//         actions: [
-//           IconButton(
-//             icon: Obx(() => Icon(
-//               _isEditing.value ? Icons.done : Icons.edit,
-//               color: GroceryColors.surface,
-//             )),
-//             onPressed: () => _isEditing.toggle(),
-//           ),
-//           SizedBox(width: 8),
-//           TextButton(
-//             onPressed: () => Get.back(),
-//             child: Text(
-//               'Cancel',
-//               style: TextStyle(color: GroceryColors.grey400),
-//             ),
-//           ),
-//           ElevatedButton(
-//             onPressed: () async {
-//               if (nameController.text.trim().isNotEmpty) {
-//                 try {
-//                   await _firestoreService.addArea(
-//                     nameController.text.trim(),
-//                     descriptionController.text.trim(),
-//                   );
-//                   Get.back();
-//                 } catch (e) {
-//                   Get.snackbar(
-//                     'Error',
-//                     'Failed to add area',
-//                     backgroundColor: GroceryColors.error,
-//                     colorText: GroceryColors.surface,
-//                   );
-//                 }
-//               }
-//             },
-//             style: ElevatedButton.styleFrom(
-//               backgroundColor: GroceryColors.teal,
-//               shape: RoundedRectangleBorder(
-//                 borderRadius: BorderRadius.circular(12),
-//               ),
-//             ),
-//             child: Text('Add'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }

@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import '../services/theme_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'theme_colors.dart';
+
+// Global ProviderContainer for static access
+final _container = ProviderContainer();
+
+// Theme providers
+final currentThemeProvider = StateProvider<ThemeType>((ref) {
+  return ThemeType.default_theme;
+});
+
+final _currentPaletteProvider = Provider<ColorPalette>((ref) {
+  final currentTheme = ref.watch(currentThemeProvider);
+  return ThemeColors.themes[currentTheme]!;
+});
 
 class GroceryColors {
-  static ThemeService get _themeService => Get.find<ThemeService>();
-  static ThemeData get _theme => _themeService.getThemeData();
-
   // Static colors that don't change with theme
   static const Color _skyBlue = Color(0xFFC8C9E6);
   static const Color _beige = Color(0xFFF5EFEB);
@@ -15,25 +25,28 @@ class GroceryColors {
   static const Color _grey400 = Color(0xFF949DA7);
   static const Color _warning = Color(0xFFF5A623);
 
+  // Get current palette
+  static ColorPalette get _palette => _container.read(_currentPaletteProvider);
+
   // Theme-dependent colors
-  static Color get navy => _theme.primaryColor;
-  static Color get teal => _theme.colorScheme.secondary;
+  static Color get navy => _palette.navy;
+  static Color get teal => _palette.teal;
   static Color get skyBlue => _skyBlue;
   static Color get beige => _beige;
   static Color get white => Colors.white;
-  static Color get background => _theme.scaffoldBackgroundColor;
+  static Color get background => _palette.background;
   static Color get surface => Colors.white;
   static Color get grey100 => _grey100;
   static Color get grey200 => _grey200;
   static Color get grey300 => _grey300;
   static Color get grey400 => _grey400;
-  static Color get success => _theme.colorScheme.secondary;
+  static Color get success => _palette.success;
   static Color get warning => _warning;
-  static Color get error => _theme.colorScheme.error;
+  static Color get error => _palette.error;
 }
 
 class GroceryTheme {
-  static ThemeData get theme => Get.find<ThemeService>().getThemeData();
+  static ThemeData get theme => getThemeData();
 
   static InputDecorationTheme get inputDecorationTheme => InputDecorationTheme(
     filled: true,
@@ -63,7 +76,7 @@ class GroceryTheme {
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: GroceryColors.error, width: 2),
     ),
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
   );
 
   static ThemeData getThemeData() {
@@ -168,11 +181,11 @@ class GroceryTheme {
           backgroundColor: GroceryColors.teal,
           foregroundColor: GroceryColors.white,
           elevation: 0,
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: TextStyle(
+          textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -181,7 +194,7 @@ class GroceryTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: GroceryColors.teal,
-          textStyle: TextStyle(
+          textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -201,5 +214,15 @@ class GroceryTheme {
         space: 24,
       ),
     );
+  }
+
+  // Method to change theme
+  static void setTheme(ThemeType themeType) {
+    _container.read(currentThemeProvider.notifier).state = themeType;
+  }
+
+  // Method to dispose container when app closes
+  static void dispose() {
+    _container.dispose();
   }
 }
