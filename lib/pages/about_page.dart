@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import 'package:get/get.dart';
+import '../../../config/theme.dart';
+import '../../../services/text_recognition_service.dart';
 
 class AboutPage extends StatelessWidget {
   Widget _buildFeatureCard({
@@ -120,7 +122,7 @@ class AboutPage extends StatelessWidget {
                   ),
                   SizedBox(height: 24),
                   Text(
-                    'Grocery Management App',
+                    'Fresh Flow',
                     style: TextStyle(
                       fontSize: isTablet ? 28 : 24,
                       fontWeight: FontWeight.bold,
@@ -176,6 +178,12 @@ class AboutPage extends StatelessWidget {
                   title: 'Storage Management',
                   description: 'Organize your groceries across multiple storage areas with easy tracking and management.',
                   icon: Icons.storage,
+                  isTablet: isTablet,
+                ),
+                _buildFeatureCard(
+                  title: 'Scan Feature',
+                  description: 'Easily scan barcodes and product labels to fetch details automatically using AI-powered recognition.',
+                  icon: Icons.qr_code_scanner,
                   isTablet: isTablet,
                 ),
                 _buildFeatureCard(
@@ -242,7 +250,7 @@ class AboutPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '[Your Name/Company]',
+                              '[Ammar, Moldir]',
                               style: TextStyle(
                                 fontSize: isTablet ? 18 : 16,
                                 fontWeight: FontWeight.w600,

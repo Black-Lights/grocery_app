@@ -83,47 +83,48 @@ class _AreaDetailPageState extends State<AreaDetailPage> {
 
   Widget _buildProductStats(List<Product> products) {
     final totalProducts = products.length;
-    final expiredProducts = products.where((p) => 
-      p.expiryDate.isBefore(DateTime.now())).length;
+    final expiredProducts = products.where((p) => p.expiryDate.isBefore(DateTime.now())).length;
     final expiringProducts = products.where((p) {
       final daysUntilExpiry = p.expiryDate.difference(DateTime.now()).inDays;
       return daysUntilExpiry > 0 && daysUntilExpiry <= 7;
     }).length;
 
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: GroceryColors.white,
-        border: Border(
-          bottom: BorderSide(color: GroceryColors.skyBlue.withOpacity(0.5)),
-        ),
       ),
-      child: Row(
-        children: [
-          _buildStatItem(
-            icon: Icons.inventory_2_outlined,
-            label: 'Total',
-            value: totalProducts.toString(),
-            color: GroceryColors.teal,
-          ),
-          if (expiringProducts > 0)
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
             _buildStatItem(
-              icon: Icons.warning_amber_outlined,
-              label: 'Expiring Soon',
-              value: expiringProducts.toString(),
-              color: GroceryColors.warning,
+              icon: Icons.inventory_2_outlined,
+              label: 'Total',
+              value: totalProducts.toString(),
+              color: GroceryColors.teal,
             ),
-          if (expiredProducts > 0)
-            _buildStatItem(
-              icon: Icons.error_outline,
-              label: 'Expired',
-              value: expiredProducts.toString(),
-              color: GroceryColors.error,
-            ),
-        ],
+            if (expiringProducts > 0)
+              _buildStatItem(
+                icon: Icons.warning_amber_outlined,
+                label: 'Expiring Soon',
+                value: expiringProducts.toString(),
+                color: GroceryColors.warning,
+              ),
+            if (expiredProducts > 0)
+              _buildStatItem(
+                icon: Icons.error_outline,
+                label: 'Expired',
+                value: expiredProducts.toString(),
+                color: GroceryColors.error,
+              ),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildStatItem({
     required IconData icon,

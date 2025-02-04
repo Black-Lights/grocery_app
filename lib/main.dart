@@ -9,6 +9,7 @@ import 'services/shopping_service.dart';
 import 'services/theme_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
+import 'services/permission_service.dart';
 import 'auth/wrapper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,8 +44,13 @@ Future<void> main() async {
       NotificationService(firestoreService: firestoreService),
       permanent: true,
     );
+    final permissionService = Get.put(PermissionService(), permanent: true);
 
     await notificationService.initializeService();
+
+    // Request permissions before launching app
+    await permissionService.requestCameraPermission();
+    await permissionService.requestStoragePermission();
 
     // Wrap the app with Riverpod
     runApp(ProviderScope(child: MyApp()));
