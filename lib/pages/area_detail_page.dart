@@ -4,16 +4,10 @@ import '../config/theme.dart';
 import '../models/area.dart';
 import '../models/product.dart';
 import '../services/firestore_service.dart';
-import '../services/shopping_service.dart';
 import '../widgets/area_detail/components/area_sidebar.dart';
 import '../widgets/area_detail/components/area_selection_header.dart';
 import '../widgets/area_detail/components/product_list.dart';
-import '../widgets/area_detail/dialogs/add_edit_product_dialog.dart';
 import '../widgets/area_detail/dialogs/add_product_selection_dialog.dart';
-import '../widgets/navigation/bottom_navigation.dart';
-import 'homepage.dart';
-import 'notifications_page.dart';
-import 'search_page.dart';
 
 class AreaDetailPage extends StatefulWidget {
   final Area area;
@@ -29,8 +23,7 @@ class AreaDetailPage extends StatefulWidget {
 
 class _AreaDetailPageState extends State<AreaDetailPage> {
   final FirestoreService _firestoreService = Get.find();
-  final ShoppingService _shoppingService = Get.find();
-  late Area currentArea;
+   late Area currentArea;
   final RxBool _isAllItems = false.obs;
   final Rx<Future<List<Product>>?> _allProductsFuture = Rx<Future<List<Product>>?>(null);
 

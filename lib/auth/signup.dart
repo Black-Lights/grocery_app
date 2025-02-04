@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import '../providers/auth_provider.dart';
 import '../config/theme.dart';
-import '../widgets/navigation/app_scaffold.dart';
 import 'auth_layout.dart';
 import 'verify.dart';
 
@@ -108,8 +107,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
     if (!_formKey.currentState!.validate() || !isUsernameAvailable.value) return;
 
     final authRepo = ref.read(authRepositoryProvider);
-    final firestoreService = ref.read(firestoreServiceProvider);
-
+    
     // ✅ Set Firebase locale before signing up to prevent warnings
     authRepo.setFirebaseLocale('en');
 

@@ -1,257 +1,25 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';  // Add this for PlatformException
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';  // Add this for FieldValue
-import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
 import '../config/theme.dart';
-import '../services/firestore_service.dart';
 import '../widgets/navigation/app_scaffold.dart';
 import 'auth_layout.dart';
 import 'signup.dart';
 import 'forgot_password.dart';
 import 'verify.dart';
-import '../pages/homepage.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  // final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final RxBool isLoading = false.obs;
-  final RxBool isGoogleLoading = false.obs;
-
-  Future<void> signInWithGoogle() async {
-    if (isLoading.value || isGoogleLoading.value) return;
-
-    try {
-      isGoogleLoading.value = true;
-
-      // Initialize GoogleSignIn
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: [
-          'email',
-          'profile',
-        ],
-        signInOption: SignInOption.standard,
-      );
-
-      // Sign out first to ensure clean state
-      await googleSignIn.signOut();
-      
-      // Start sign in flow
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      
-      if (googleUser == null) {
-        // User canceled the sign-in flow
-        print('User canceled Google Sign In');
-        return;
-      }
-
-      try {
-        // Get auth details
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-        // Create credential
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        // Sign in to Firebase
-        final UserCredential userCredential = 
-            await FirebaseAuth.instance.signInWithCredential(credential);
-
-        final user = userCredential.user;
-        if (user == null) throw Exception('Failed to sign in with Google');
-
-        // Check if this is a new user
-        if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-          await _createUserDocument(user, googleUser);
-        }
-
-        // Navigate to HomePage
-        Get.offAll(() => HomePage());
-
-      } catch (e) {
-        print('Error during Google authentication: $e');
-        throw Exception('Failed to authenticate with Google');
-      }
-
-    } catch (e) {
-      print('Error during Google Sign In: $e');
-      String message = 'Failed to sign in with Google. Please try again.';
-      
-      if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'account-exists-with-different-credential':
-            message = 'An account already exists with this email';
-            break;
-          case 'invalid-credential':
-            message = 'Invalid credentials. Please try again';
-            break;
-          case 'operation-not-allowed':
-            message = 'Google sign in is not enabled';
-            break;
-          case 'user-disabled':
-            message = 'This account has been disabled';
-            break;
-          case 'user-not-found':
-            message = 'No account found with this email';
-            break;
-        }
-      }
-
-      Get.snackbar(
-        'Sign In Failed',
-        message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 5),
-      );
-    } finally {
-      isGoogleLoading.value = false;
-    }
-  }
-
-  Future<void> _createUserDocument(User user, GoogleSignInAccount googleUser) async {
-    try {
-      final firestoreService = Get.find<FirestoreService>();
-      
-      // Split display name into first and last name
-      final nameParts = googleUser.displayName?.split(' ') ?? ['', ''];
-      final firstName = nameParts.first;
-      final lastName = nameParts.length > 1 ? nameParts.last : '';
-      
-      // Create user document
-      await firestoreService.createUserProfile(
-        userId: user.uid,
-        data: {
-          'firstName': firstName,
-          'lastName': lastName,
-          'email': googleUser.email,
-          'photoURL': googleUser.photoUrl,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'provider': 'google',
-        },
-      );
-
-      // Initialize default areas
-      await firestoreService.initializeDefaultAreas();
-    } catch (e) {
-      print('Error creating user document: $e');
-      // Continue anyway as the auth was successful
-    }
-  }
-
-  Future<void> signIn() async {
-    if (isLoading.value || isGoogleLoading.value) return;
-
-    // Validate inputs
-    if (email.text.trim().isEmpty || password.text.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please fill all fields',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-      
-      print('Attempting to sign in with email: ${email.text.trim()}');
-      
-      // Attempt sign in
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email.text.trim(),
-        password: password.text,
-      );
-
-      final user = userCredential.user;
-      if (user == null) {
-        throw FirebaseAuthException(
-          code: 'user-not-found',
-          message: 'No user found with this email',
-        );
-      }
-
-      print('Successfully signed in user: ${user.uid}');
-
-      // Check email verification
-      if (!user.emailVerified) {
-        Get.off(() => VerifyEmailPage()); // Use Get.off to prevent back navigation
-      } else {
-        // Clear all previous routes and go to HomePage
-        Get.offAll(() => AppScaffold());
-      }
-      
-    } on FirebaseAuthException catch (e) {
-      print('FirebaseAuthException during login: ${e.code} - ${e.message}');
-      
-      String message;
-      switch (e.code) {
-        case 'user-not-found':
-          message = 'No user found with this email';
-          break;
-        case 'wrong-password':
-          message = 'Incorrect password';
-          break;
-        case 'invalid-email':
-          message = 'Invalid email address';
-          break;
-        case 'user-disabled':
-          message = 'This account has been disabled';
-          break;
-        case 'too-many-requests':
-          message = 'Too many attempts. Please try again later';
-          break;
-        case 'network-request-failed':
-          message = 'Network error. Please check your connection';
-          break;
-        case 'invalid-credential':
-          message = 'Invalid login credentials';
-          break;
-        default:
-          message = e.message ?? 'An error occurred during sign in';
-      }
-      
-      Get.snackbar(
-        'Sign In Failed',
-        message,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 5),
-        icon: Icon(Icons.error_outline, color: Colors.white),
-      );
-    } catch (e) {
-      print('Unexpected error during sign in: $e');
-      
-      Get.snackbar(
-        'Error',
-        'An unexpected error occurred. Please try again',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: Duration(seconds: 5),
-        icon: Icon(Icons.error_outline, color: Colors.white),
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  bool isLoading = false;
+  bool isGoogleLoading = false;
 
   @override
   void dispose() {
@@ -259,6 +27,64 @@ class _LoginPageState extends State<LoginPage> {
     password.dispose();
     super.dispose();
   }
+
+  Future<void> signIn() async {
+    final authRepo = ref.read(authRepositoryProvider);
+    final firestoreService = ref.read(firestoreServiceProvider); // Fetch FirestoreService
+
+    if (email.text.trim().isEmpty || password.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enter email and password")),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final userCredential = await authRepo.signIn(email.text.trim(), password.text);
+
+      if (userCredential?.user != null) {
+        if (!userCredential!.user!.emailVerified) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => VerifyEmailPage()));
+        } else {
+          // ✅ Fetch user profile from Firestore
+          final userData = await firestoreService.getUserData();
+
+          print("User Profile: ${userData['firstName']} ${userData['lastName']} - ${userData['username']}");
+
+          // ✅ You can now pass `userData` to another screen if needed.
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AppScaffold()));
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    final authRepo = ref.read(authRepositoryProvider);
+
+    if (isGoogleLoading) return;
+    setState(() => isGoogleLoading = true);
+
+    try {
+      final userCredential = await authRepo.signInWithGoogle();
+
+      if (userCredential?.user?.emailVerified == false) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => VerifyEmailPage()));
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AppScaffold()));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => isGoogleLoading = false);
+    }
+  }
+
   Widget _buildLoginForm() {
     return Container(
       constraints: BoxConstraints(maxWidth: 400),
@@ -311,13 +137,13 @@ class _LoginPageState extends State<LoginPage> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () => Get.to(() => ForgotPasswordPage()),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForgotPasswordPage())),
               child: Text('Forgot Password?'),
             ),
           ),
           SizedBox(height: 24),
-          Obx(() => ElevatedButton(
-            onPressed: isLoading.value || isGoogleLoading.value ? null : signIn,
+          ElevatedButton(
+            onPressed: isLoading ? null : signIn,
             style: ElevatedButton.styleFrom(
               backgroundColor: GroceryColors.teal,
               padding: EdgeInsets.symmetric(vertical: 16),
@@ -325,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: isLoading.value
+            child: isLoading
                 ? SizedBox(
                     width: 24,
                     height: 24,
@@ -341,7 +167,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-          )),
+          ),
           SizedBox(height: 16),
           Row(
             children: [
@@ -360,10 +186,8 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
           SizedBox(height: 16),
-          Obx(() => OutlinedButton(
-            onPressed: isLoading.value || isGoogleLoading.value 
-                ? null 
-                : signInWithGoogle,
+          OutlinedButton(
+            onPressed: isGoogleLoading ? null : signInWithGoogle,
             style: OutlinedButton.styleFrom(
               padding: EdgeInsets.symmetric(vertical: 16),
               side: BorderSide(color: GroceryColors.grey200),
@@ -371,15 +195,13 @@ class _LoginPageState extends State<LoginPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: isGoogleLoading.value
+            child: isGoogleLoading
                 ? SizedBox(
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        GroceryColors.teal,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(GroceryColors.teal),
                     ),
                   )
                 : Row(
@@ -401,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
-          )),
+          ),
           SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -411,7 +233,7 @@ class _LoginPageState extends State<LoginPage> {
                 style: TextStyle(color: GroceryColors.grey400),
               ),
               TextButton(
-                onPressed: () => Get.to(() => SignUpPage()),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SignUpPage())),
                 child: Text('Sign Up'),
               ),
             ],

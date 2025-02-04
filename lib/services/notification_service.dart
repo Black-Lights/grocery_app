@@ -1,13 +1,11 @@
+import 'dart:developer';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
 import '../models/notification_settings.dart';
 import '../models/notification.dart';
-import '../models/product.dart';
 import 'firestore_service.dart';
 import '../config/theme.dart';
 
@@ -48,25 +46,25 @@ class NotificationService extends GetxService {
       // Start all checks
       _startAllChecks();
     } catch (e) {
-      print('Error initializing notification service: $e');
+      log('Error initializing notification service: $e');
     }
   }
 
   Future<void> refreshNotifications() async {
     try {
-      print('Refreshing notifications...');
+      log('Refreshing notifications...');
       final freshNotifications = await _firestoreService.getRecentNotifications();
       notifications.value = freshNotifications;
-      print('Notifications refreshed. Count: ${notifications.length}');
+      log('Notifications refreshed. Count: ${notifications.length}');
     } catch (e) {
-      print('Error refreshing notifications: $e');
+      log('Error refreshing notifications: $e');
     }
   }
 
   Future<void> initializeService() async {
     if (_isInitialized) return;
     
-    print('Initializing NotificationService...');
+    log('Initializing NotificationService...');
     
     try {
       // Initialize local notifications
@@ -88,9 +86,9 @@ class NotificationService extends GetxService {
       });
       
       _isInitialized = true;
-      print('NotificationService initialized successfully');
+      log('NotificationService initialized successfully');
     } catch (e) {
-      print('Error initializing NotificationService: $e');
+      log('Error initializing NotificationService: $e');
       _isInitialized = false;
     }
   }
@@ -121,7 +119,7 @@ class NotificationService extends GetxService {
 
   // Modify the check methods to run less frequently
   void _startAllChecks() {
-    print('Starting notification checks...');
+    log('Starting notification checks...');
     
     // Cancel existing timers
     _stopAllChecks();
@@ -135,26 +133,26 @@ class NotificationService extends GetxService {
 
     // Set up periodic checks with longer intervals
     _expiryCheckTimer = Timer.periodic(Duration(hours: 6), (_) {
-      print('Running scheduled expiry check');
+      log('Running scheduled expiry check');
       _checkExpiringProducts();
     });
 
     _lowStockCheckTimer = Timer.periodic(Duration(hours: 6), (_) {
-      print('Running scheduled low stock check');
+      log('Running scheduled low stock check');
       _checkLowStockProducts();
     });
 
     _weeklySummaryTimer = Timer.periodic(Duration(hours: 1), (_) {
-      print('Running scheduled weekly summary check');
+      log('Running scheduled weekly summary check');
       _checkWeeklySummary();
     });
 
-    print('Periodic checks scheduled');
+    log('Periodic checks scheduled');
   }
 
   Future<void> _initializeNotifications() async {
     try {
-      print('Initializing local notifications...');
+      log('Initializing local notifications...');
       
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings(
@@ -185,21 +183,21 @@ class NotificationService extends GetxService {
             );
       }
 
-      print('Local notifications initialized successfully');
+      log('Local notifications initialized successfully');
     } catch (e) {
-      print('Error initializing local notifications: $e');
+      log('Error initializing local notifications: $e');
       rethrow;
     }
   }
 
   Future<void> _loadExistingNotifications() async {
     try {
-      print('Loading existing notifications...');
+      log('Loading existing notifications...');
       final existingNotifications = await _firestoreService.getRecentNotifications();
       notifications.value = existingNotifications;
-      print('Loaded ${existingNotifications.length} notifications');
+      log('Loaded ${existingNotifications.length} notifications');
     } catch (e) {
-      print('Error loading existing notifications: $e');
+      log('Error loading existing notifications: $e');
       rethrow;
     }
   }
@@ -218,14 +216,14 @@ class NotificationService extends GetxService {
     try {
       if (!settings.value.lowStockNotifications) return;
 
-      print('Checking for low stock products...');
+      log('Checking for low stock products...');
       final products = await _firestoreService.getAllProducts();
 
       for (final product in products) {
         final threshold = settings.value.lowStockThresholds[product.category] ?? 2;
         
         if (product.quantity <= threshold) {
-          print('Found low stock product: ${product.name}, quantity: ${product.quantity}');
+          log('Found low stock product: ${product.name}, quantity: ${product.quantity}');
           
           await _createNotification(
             title: 'Low Stock Alert',
@@ -237,7 +235,7 @@ class NotificationService extends GetxService {
         }
       }
     } catch (e) {
-      print('Error checking low stock products: $e');
+      log('Error checking low stock products: $e');
     }
   }
 
@@ -253,7 +251,7 @@ class NotificationService extends GetxService {
       if (now.hour != scheduledTime.hour || 
           (now.minute - scheduledTime.minute).abs() > 5) return;
 
-      print('Generating weekly summary...');
+      log('Generating weekly summary...');
       
       final products = await _firestoreService.getAllProducts();
       final expiringCount = products.where((p) => 
@@ -273,7 +271,7 @@ class NotificationService extends GetxService {
         );
       }
     } catch (e) {
-      print('Error generating weekly summary: $e');
+      log('Error generating weekly summary: $e');
     }
   }
 
@@ -282,7 +280,7 @@ class NotificationService extends GetxService {
     try {
       if (!settings.value.expiryNotifications) return;
 
-      print('Checking for expiring products...');
+      log('Checking for expiring products...');
       final products = await _firestoreService.getAllProducts();
       final now = DateTime.now();
 
@@ -290,7 +288,7 @@ class NotificationService extends GetxService {
         final daysUntilExpiry = product.expiryDate.difference(now).inDays;
         
         if (daysUntilExpiry <= settings.value.expiryThresholdDays && daysUntilExpiry > 0) {
-          print('Found expiring product: ${product.name}, days left: $daysUntilExpiry');
+          log('Found expiring product: ${product.name}, days left: $daysUntilExpiry');
           
           await _createNotification(
             title: 'Product Expiring Soon',
@@ -302,7 +300,7 @@ class NotificationService extends GetxService {
         }
       }
     } catch (e) {
-      print('Error checking expiring products: $e');
+      log('Error checking expiring products: $e');
     }
   }
 
@@ -374,9 +372,9 @@ class NotificationService extends GetxService {
         payload: payload,
       );
 
-      print('Local notification shown: $title');
+      log('Local notification shown: $title');
     } catch (e) {
-      print('Error showing local notification: $e');
+      log('Error showing local notification: $e');
     }
   }
 
@@ -391,7 +389,7 @@ class NotificationService extends GetxService {
     final key = '${type.name}_${productId ?? ''}_${areaId ?? ''}_$today';
     
     if (_processedNotifications.contains(key)) {
-      print('Duplicate notification found: $key');
+      log('Duplicate notification found: $key');
       return true;
     }
     
@@ -416,11 +414,11 @@ class NotificationService extends GetxService {
       );
 
       if (isDuplicate) {
-        print('Skipping duplicate notification: $title');
+        log('Skipping duplicate notification: $title');
         return;
       }
 
-      print('Creating new notification: $title');
+      log('Creating new notification: $title');
 
       final notification = GroceryNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -448,16 +446,10 @@ class NotificationService extends GetxService {
         areaId: areaId,
       );
 
-      print('Notification created and stored. Total notifications: ${notifications.length}');
+      log('Notification created and stored. Total notifications: ${notifications.length}');
     } catch (e) {
-      print('Error creating notification: $e');
+      log('Error creating notification: $e');
     }
-  }
-
-
-  Future<void> _updateRecentNotifications() async {
-    final notifications = await _firestoreService.getRecentNotifications();
-    recentNotifications.value = notifications;
   }
 
   Color _getNotificationColor(NotificationType type) {
@@ -483,7 +475,7 @@ class NotificationService extends GetxService {
       notifications.clear();
       hasNewNotifications.value = false;
     } catch (e) {
-      print('Error clearing notifications: $e');
+      log('Error clearing notifications: $e');
     }
   }
 
@@ -494,80 +486,7 @@ class NotificationService extends GetxService {
         .toList();
   }
 
-  void _startExpiryCheckTimer() {
-    Future.delayed(Duration(minutes: 1), () async {
-      if (!settings.value.expiryNotifications) return;
-
-      final products = await _firestoreService.getAllProducts();
-      final expiringProducts = products.where((product) {
-        final daysUntilExpiry = product.expiryDate.difference(DateTime.now()).inDays;
-        return daysUntilExpiry <= settings.value.expiryThresholdDays && daysUntilExpiry > 0;
-      }).toList();
-
-      for (final product in expiringProducts) {
-        final daysLeft = product.expiryDate.difference(DateTime.now()).inDays;
-        await _createNotification(
-          title: 'Product Expiring Soon',
-          message: '${product.name} will expire in $daysLeft days',
-          type: NotificationType.expiry,
-          productId: product.id,
-          areaId: product.areaId,
-        );
-      }
-
-      _startExpiryCheckTimer();
-    });
-  }
-
-  void _startLowStockCheckTimer() {
-    Future.delayed(Duration(minutes: 1), () async {
-      if (!settings.value.lowStockNotifications) return;
-
-      final products = await _firestoreService.getAllProducts();
-      for (final product in products) {
-        final threshold = settings.value.lowStockThresholds[product.category] ?? 2;
-        if (product.quantity <= threshold) {
-          await _createNotification(
-            title: 'Low Stock Alert',
-            message: '${product.name} is running low (${product.quantity} ${product.unit} left)',
-            type: NotificationType.lowStock,
-            productId: product.id,
-            areaId: product.areaId,
-          );
-        }
-      }
-
-      _startLowStockCheckTimer();
-    });
-  }
-
-  void _scheduleWeeklySummary() {
-    if (!settings.value.weeklyReminders) return;
-
-    Future.delayed(Duration(minutes: 1), () async {
-      final now = DateTime.now();
-      if (settings.value.weeklyReminderDays.contains(now.weekday)) {
-        final products = await _firestoreService.getAllProducts();
-        final expiringCount = products.where((p) => 
-          p.expiryDate.difference(now).inDays <= settings.value.expiryThresholdDays
-        ).length;
-        
-        final lowStockCount = products.where((p) {
-          final threshold = settings.value.lowStockThresholds[p.category] ?? 2;
-          return p.quantity <= threshold;
-        }).length;
-
-        await _createNotification(
-          title: 'Weekly Inventory Summary',
-          message: 'You have $expiringCount products expiring soon and $lowStockCount products running low.',
-          type: NotificationType.weeklySummary,
-        );
-      }
-
-      _scheduleWeeklySummary();
-    });
-  }
-
+ 
   Future<void> updateSettings(NotificationSettings newSettings) async {
     await _firestoreService.updateNotificationSettings(newSettings.toMap());
     settings.value = newSettings;

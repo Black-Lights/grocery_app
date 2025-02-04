@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../../config/theme.dart';
-import '../../../services/text_recognition_service.dart';
 
 class AboutPage extends StatelessWidget {
   Widget _buildFeatureCard({

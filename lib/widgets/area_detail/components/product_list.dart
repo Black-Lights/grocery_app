@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../config/theme.dart';
@@ -97,7 +98,7 @@ class ProductList extends StatelessWidget {
         colorText: GroceryColors.white,
       );
     } catch (e) {
-      print('Error adding to shopping list: $e');
+      log('Error adding to shopping list: $e');
       Get.snackbar(
         'Error',
         'Failed to add to shopping list',

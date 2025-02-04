@@ -1,11 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:mockito/mockito.dart';
 import 'package:grocery/services/firestore_service.dart';
 import 'package:grocery/models/area.dart';
-import 'package:grocery/models/product.dart';
 import '../mocks/firebase_mocks.dart';
 
 void main() {

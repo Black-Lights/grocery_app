@@ -1,8 +1,8 @@
+import 'dart:developer';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart';
 
 class ProductDetails {
   final String? name;
@@ -51,7 +51,7 @@ class TextRecognitionService {
       // Process barcode first
       if (barcodes.isNotEmpty) {
         barcode = barcodes.first.rawValue;
-        print('Found barcode: $barcode');
+        log('Found barcode: $barcode');
 
         if (barcode != null) {
           // Try multiple product databases
@@ -60,18 +60,18 @@ class TextRecognitionService {
             productName = productInfo['name'];
             brand = productInfo['brand'];
             ingredients = productInfo['ingredients'];
-            print('Found product info from barcode: $productInfo');
+            log('Found product info from barcode: $productInfo');
           }
         }
       }
 
       // Process text for dates
       final text = recognizedText.text;
-      print('Raw recognized text: $text');
+      log('Raw recognized text: $text');
 
       for (TextBlock block in recognizedText.blocks) {
         final line = block.text.trim();
-        print('Processing text block: $line');
+        log('Processing text block: $line');
 
         // Look for dates in various formats
         final datePatterns = [
@@ -91,22 +91,22 @@ class TextRecognitionService {
               if (year < 100) year += 2000;
               
               final date = DateTime(year, month, day);
-              print('Found date: $date');
+              log('Found date: $date');
               
               // If date is in the future, consider it expiry date
               if (date.isAfter(DateTime.now())) {
                 if (expiryDate == null || date.isBefore(expiryDate)) {
                   expiryDate = date;
-                  print('Set as expiry date');
+                  log('Set as expiry date');
                 }
               } else {
                 if (manufacturingDate == null || date.isAfter(manufacturingDate)) {
                   manufacturingDate = date;
-                  print('Set as manufacturing date');
+                  log('Set as manufacturing date');
                 }
               }
             } catch (e) {
-              print('Error parsing date: $e');
+              log('Error parsing date: $e');
             }
           }
         }
@@ -120,7 +120,7 @@ class TextRecognitionService {
               !_isCommonLabel(line) &&  
               line.length > 2) {
             productName = _cleanProductName(line);
-            print('Found product name from text: $productName');
+            log('Found product name from text: $productName');
             break;
           }
         }
@@ -136,7 +136,7 @@ class TextRecognitionService {
         ingredients: ingredients,
       );
     } catch (e) {
-      print('Error processing image: $e');
+      log('Error processing image: $e');
       rethrow;
     } finally {
       textRecognizer.close();
@@ -182,7 +182,7 @@ class TextRecognitionService {
 
       return null;
     } catch (e) {
-      print('Error looking up product: $e');
+      log('Error looking up product: $e');
       return null;
     }
   }

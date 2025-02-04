@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,7 +8,6 @@ import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import 'auth_layout.dart';
 import 'welcome_page.dart';
-import 'wrapper.dart';
 import '../widgets/navigation/app_scaffold.dart';
 
 class VerifyEmailPage extends ConsumerStatefulWidget {
@@ -114,7 +114,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       //   );
       // }
     } catch (e) {
-      print('Error checking email verification: $e');
+      log('Error checking email verification: $e');
     } finally {
       isLoading.value = false;
     }
@@ -126,7 +126,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       await authRepo.signOut();
       Get.offAll(() => WelcomePage());
     } catch (e) {
-      print('Error signing out: $e');
+      log('Error signing out: $e');
       Get.snackbar(
         'Error',
         'Failed to sign out',

@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -39,7 +40,7 @@ class ThemeService extends GetxService {
         _themeData = _getThemeDataForType(currentTheme.value);
       }
     } catch (e) {
-      print('Error loading theme: $e');
+      log('Error loading theme: $e');
     }
   }
 
@@ -50,7 +51,7 @@ class ThemeService extends GetxService {
       _themeData = _getThemeDataForType(type);
       Get.forceAppUpdate();
     } catch (e) {
-      print('Error saving theme: $e');
+      log('Error saving theme: $e');
     }
   }
 

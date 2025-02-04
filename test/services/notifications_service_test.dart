@@ -1,12 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:mockito/mockito.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:grocery/services/notification_service.dart';
 import 'package:grocery/services/firestore_service.dart';
 import 'package:grocery/models/notification.dart';
-import 'package:grocery/models/notification_settings.dart';
 import '../mocks/firebase_mocks.dart';
 
 void main() {

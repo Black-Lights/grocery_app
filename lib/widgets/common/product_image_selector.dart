@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -32,7 +33,7 @@ class ProductImageSelector extends StatelessWidget {
         onImageSelected(image.path);
       }
     } catch (e) {
-      print('Error picking image: $e');
+      log('Error picking image: $e');
     }
   }
 
@@ -234,8 +235,7 @@ class ProductImageSelector extends StatelessWidget {
       return FutureBuilder<String?>(
         future: _productImageService.getProductImage(barcode!, imagePath),
         builder: (context, snapshot) {
-          final finalImagePath = snapshot.data ?? imagePath;
-          return _buildImagePreview();
+        return _buildImagePreview();
         },
       );
     }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../config/theme.dart';
-import 'package:get/get.dart';
 
 class HeaderSection extends StatelessWidget {
   final bool isLargeScreen;  // Changed to isLargeScreen

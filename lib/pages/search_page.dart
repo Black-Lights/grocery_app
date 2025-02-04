@@ -5,7 +5,6 @@ import '../models/product.dart';
 import '../models/area.dart';
 import '../config/theme.dart';
 import 'area_detail_page.dart';
-import '../widgets/navigation/bottom_navigation.dart';
 
 class SearchPage extends StatefulWidget {
   @override

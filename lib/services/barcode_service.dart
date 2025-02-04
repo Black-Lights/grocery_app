@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -18,7 +19,7 @@ class BarcodeService {
 
       // Get the first barcode found
       final barcode = barcodes.first;
-      print('Barcode found: ${barcode.rawValue}');
+      log('Barcode found: ${barcode.rawValue}');
 
       // Look up product information using the barcode
       if (barcode.rawValue != null) {
@@ -27,7 +28,7 @@ class BarcodeService {
 
       return null;
     } catch (e) {
-      print('Error scanning barcode: $e');
+      log('Error scanning barcode: $e');
       return null;
     } finally {
       _barcodeScanner.close();
@@ -57,7 +58,7 @@ class BarcodeService {
       }
       return null;
     } catch (e) {
-      print('Error looking up product: $e');
+      log('Error looking up product: $e');
       return null;
     }
   }

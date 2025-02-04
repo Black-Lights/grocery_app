@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
 import '../services/firestore_service.dart';
-import '../models/contact_message.dart';
 
 class ContactPage extends StatefulWidget {
   @override

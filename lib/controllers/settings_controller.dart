@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
 import '../services/theme_service.dart';
 
 class SettingsController extends GetxController {

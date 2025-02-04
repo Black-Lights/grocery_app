@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../services/firestore_service.dart';
@@ -29,7 +30,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     try {
       await _firestoreService.initializeDefaultAreas();
     } catch (e) {
-      print('Error checking/initializing areas: $e');
+      log('Error checking/initializing areas: $e');
     }
   }
 

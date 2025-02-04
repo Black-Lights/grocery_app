@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -43,7 +44,7 @@ class ProductImageService {
       }
       return null;
     } catch (e) {
-      print('Error fetching product info: $e');
+      log('Error fetching product info: $e');
       return null;
     }
   }
@@ -64,7 +65,7 @@ class ProductImageService {
       if (await cachedImageFile.exists()) {
         _imageCache[barcode] = cachedImagePath;  // Store in memory
         if (!_lastRequestTimes.containsKey(barcode)) {
-          print('Using cached image: $cachedImagePath'); // Log only once per session
+          log('Using cached image: $cachedImagePath'); // Log only once per session
         }
         return cachedImagePath;
       }
@@ -85,7 +86,7 @@ class ProductImageService {
       // ✅ If no OpenFoodFacts image, return user-uploaded image
       return userImagePath;
     } catch (e) {
-      print('Error getting product image: $e');
+      log('Error getting product image: $e');
       return userImagePath;
     }
   }
@@ -106,13 +107,13 @@ class ProductImageService {
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
         await imageFile.writeAsBytes(response.bodyBytes);
-        print('Downloaded and saved image: $imagePath');
+        log('Downloaded and saved image: $imagePath');
         return imagePath;
       }
 
       return null;
     } catch (e) {
-      print('Error downloading image: $e');
+      log('Error downloading image: $e');
       return null;
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:grocery/models/contact_message.dart';
@@ -62,11 +63,11 @@ class FirestoreService {
     // Add this method
   Future<void> initializeDefaultAreas() async {
     try {
-      print('Checking for existing areas...'); // Debug print
+      log('Checking for existing areas...'); // Debug print
       final areasSnapshot = await areasCollection.get();
       
       if (areasSnapshot.docs.isEmpty) {
-        print('No areas found, creating defaults...'); // Debug print
+        log('No areas found, creating defaults...'); // Debug print
         
         // Create batch for multiple writes
         final batch = _firestore.batch();
@@ -84,12 +85,12 @@ class FirestoreService {
         
         // Commit the batch
         await batch.commit();
-        print('Default areas created successfully'); // Debug print
+        log('Default areas created successfully'); // Debug print
       } else {
-        print('Areas already exist, skipping initialization'); // Debug print
+        log('Areas already exist, skipping initialization'); // Debug print
       }
     } catch (e) {
-      print('Error initializing default areas: $e'); // Debug print
+      log('Error initializing default areas: $e'); // Debug print
       throw Exception('Failed to initialize default areas: $e');
     }
   }
@@ -132,7 +133,7 @@ class FirestoreService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating user profile: $e');
+      log('Error updating user profile: $e');
       throw Exception('Failed to update profile: ${e.toString()}');
     }
   }
@@ -147,7 +148,7 @@ class FirestoreService {
 
     return querySnapshot.docs.isNotEmpty;
   } catch (e) {
-    print('Error checking username: $e');
+    log('Error checking username: $e');
     throw Exception('Failed to check username availability');
   }
 }
@@ -167,7 +168,7 @@ class FirestoreService {
         updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
     } catch (e) {
-      print('Error getting area: $e');
+      log('Error getting area: $e');
       return null;
     }
   }
@@ -177,14 +178,14 @@ class FirestoreService {
     try {
       if (query.trim().length < 2) return [];
 
-      print('Searching products for query: $query');
+      log('Searching products for query: $query');
       final queryLower = query.toLowerCase().trim();
       final areas = await areasCollection.get();
       List<Product> results = [];
 
       for (var area in areas.docs) {
         final areaName = area.data()['name'] ?? '';
-        print('Searching in area: $areaName'); // Debug print
+        log('Searching in area: $areaName'); // Debug print
 
         final products = await area.reference
             .collection('products')
@@ -197,7 +198,7 @@ class FirestoreService {
           
           // Check if product name contains the search query
           if (productName.contains(queryLower)) {
-            print('Found matching product: ${data['name']}'); // Debug print
+            log('Found matching product: ${data['name']}'); // Debug print
             
             try {
               final product = Product(
@@ -215,20 +216,20 @@ class FirestoreService {
               );
               results.add(product);
             } catch (e) {
-              print('Error parsing product: $e'); // Debug print
-              print('Product data: $data'); // Debug print
+              log('Error parsing product: $e'); // Debug print
+              log('Product data: $data'); // Debug print
             }
           }
         }
       }
 
-      print('Found ${results.length} matching products'); // Debug print
+      log('Found ${results.length} matching products'); // Debug print
       
       // Sort results by name
       results.sort((a, b) => a.name.compareTo(b.name));
       return results;
     } catch (e) {
-      print('Error searching products: $e');
+      log('Error searching products: $e');
       return [];
     }
   }
@@ -245,7 +246,7 @@ class FirestoreService {
     required String message,
   }) async {
     try {
-      print('Adding contact message from: $name'); // Debug print
+      log('Adding contact message from: $name'); // Debug print
       
       await contactMessagesCollection.add({
         'name': name,
@@ -255,9 +256,9 @@ class FirestoreService {
         'userId': currentUserId,
       });
       
-      print('Contact message added successfully'); // Debug print
+      log('Contact message added successfully'); // Debug print
     } catch (e) {
-      print('Error adding contact message: $e'); // Debug print
+      log('Error adding contact message: $e'); // Debug print
       throw Exception('Failed to send message: ${e.toString()}');
     }
   }
@@ -275,7 +276,7 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      print('Error getting contact messages: $e');
+      log('Error getting contact messages: $e');
       throw Exception('Failed to get contact messages');
     }
   }
@@ -288,7 +289,7 @@ class FirestoreService {
 
   Future<List<GroceryNotification>> getRecentNotifications() async {
     try {
-      print('Fetching recent notifications from Firestore...');
+      log('Fetching recent notifications from Firestore...');
       final snapshot = await _notificationsRef
           .orderBy('timestamp', descending: true)
           .limit(50)
@@ -302,10 +303,10 @@ class FirestoreService {
         });
       }).toList();
 
-      print('Retrieved ${notifications.length} notifications from Firestore');
+      log('Retrieved ${notifications.length} notifications from Firestore');
       return notifications;
     } catch (e) {
-      print('Error getting recent notifications: $e');
+      log('Error getting recent notifications: $e');
       return [];
     }
   }
@@ -320,7 +321,7 @@ class FirestoreService {
       final data = doc.data()?['notificationSettings'];
       return data ?? NotificationSettings().toMap();
     } catch (e) {
-      print('Error getting notification settings: $e');
+      log('Error getting notification settings: $e');
       throw Exception('Failed to get notification settings');
     }
   }
@@ -332,20 +333,20 @@ class FirestoreService {
         'notificationSettings': settings,
       }, SetOptions(merge: true));
     } catch (e) {
-      print('Error updating notification settings: $e');
+      log('Error updating notification settings: $e');
       throw Exception('Failed to update notification settings');
     }
   }
 
   Future<void> addNotification(GroceryNotification notification) async {
     try {
-      print('Adding notification to Firestore: ${notification.title}');
+      log('Adding notification to Firestore: ${notification.title}');
       await _notificationsRef
           .doc(notification.id)
           .set(notification.toMap());
-      print('Successfully added notification to Firestore');
+      log('Successfully added notification to Firestore');
     } catch (e) {
-      print('Error adding notification to Firestore: $e');
+      log('Error adding notification to Firestore: $e');
       throw e;
     }
   }
@@ -353,7 +354,7 @@ class FirestoreService {
 // Clear all notifications
   Future<void> clearAllNotifications() async {
     try {
-      print('Clearing all notifications...');
+      log('Clearing all notifications...');
       final batch = _firestore.batch();
       final snapshots = await _notificationsRef.get();
       
@@ -362,9 +363,9 @@ class FirestoreService {
       }
       
       await batch.commit();
-      print('Successfully cleared all notifications');
+      log('Successfully cleared all notifications');
     } catch (e) {
-      print('Error clearing notifications: $e');
+      log('Error clearing notifications: $e');
       throw e;
     }
   }
@@ -376,7 +377,7 @@ class FirestoreService {
         'isRead': true,
       });
     } catch (e) {
-      print('Error marking notification as read: $e');
+      log('Error marking notification as read: $e');
       throw Exception('Failed to mark notification as read');
     }
   }
@@ -393,7 +394,7 @@ class FirestoreService {
 
       return snapshot.count ?? 0;
     } catch (e) {
-      print('Error getting unread notifications count: $e');
+      log('Error getting unread notifications count: $e');
       throw Exception('Failed to get unread notifications count');
     }
   }
@@ -412,7 +413,7 @@ class FirestoreService {
       
       await batch.commit();
     } catch (e) {
-      print('Error marking all notifications as read: $e');
+      log('Error marking all notifications as read: $e');
       throw Exception('Failed to mark all notifications as read');
     }
   }
@@ -432,7 +433,7 @@ class FirestoreService {
         await batch.commit();
       }
     } catch (e) {
-      print('Error cleaning old notifications: $e');
+      log('Error cleaning old notifications: $e');
     }
   }
 
@@ -487,7 +488,7 @@ class FirestoreService {
 
       return allProducts;
     } catch (e) {
-      print('Error getting all products: $e');
+      log('Error getting all products: $e');
       throw Exception('Failed to get all products');
     }
   }
@@ -525,7 +526,7 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      print('Error getting areas: $e');
+      log('Error getting areas: $e');
       throw Exception('Failed to get areas');
     }
   }
@@ -558,7 +559,7 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      print('Error getting products: $e');
+      log('Error getting products: $e');
       throw Exception('Failed to get products');
     }
   }
@@ -598,7 +599,7 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      print('Error getting recent products: $e');
+      log('Error getting recent products: $e');
       throw Exception('Failed to get recent products');
     }
   }
@@ -681,7 +682,7 @@ class FirestoreService {
           .doc(productId)
           .delete();
     } catch (e) {
-      print('Error deleting product: $e');
+      log('Error deleting product: $e');
       throw Exception('Failed to delete product');
     }
   }
@@ -695,7 +696,7 @@ class FirestoreService {
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error updating area: $e');
+      log('Error updating area: $e');
       throw Exception('Failed to update area');
     }
   }
@@ -716,7 +717,7 @@ class FirestoreService {
       
       await batch.commit();
     } catch (e) {
-      print('Error deleting area: $e');
+      log('Error deleting area: $e');
       throw Exception('Failed to delete area');
     }
   }

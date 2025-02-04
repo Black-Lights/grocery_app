@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../config/theme.dart';
 import '../../pages/homepage.dart';
 import '../../pages/search_page.dart';
 import '../../pages/notifications_page.dart';
 import '../product_image_capture/product_image_capture.dart';
 import 'bottom_navigation.dart';
-import 'left_drawer.dart';
 
 class AppScaffold extends StatefulWidget {
   final int? initialTab;

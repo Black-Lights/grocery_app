@@ -1,12 +1,10 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../../../config/theme.dart';
 import '../../../services/text_recognition_service.dart';
 import '../../../services/firestore_service.dart';
-import '../../../models/area.dart';
-import '../../../models/product.dart';
 import '../../../constants/food_categories.dart';
 import '../../common/category_selector.dart';
 import '../../common/storage_area_selector.dart';
@@ -61,11 +59,11 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     
     // Initialize with barcode data if available
     if (widget.details.barcode != null) {
-      print('Barcode detected: ${widget.details.barcode}');
+      log('Barcode detected: ${widget.details.barcode}');
     }
     // Initialize with barcode data if available
     if (widget.details.barcode != null) {
-      print('Barcode detected: ${widget.details.barcode}');
+      log('Barcode detected: ${widget.details.barcode}');
       _loadProductInfo();
     } else {
       productImagePath.value = widget.imagePath;
@@ -96,7 +94,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
       
       if (imagePath != null) {
         productImagePath.value = imagePath;
-        print('Product image path: $imagePath');
+        log('Product image path: $imagePath');
       }
 
       // Get product info
@@ -124,7 +122,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
         });
       }
     } catch (e) {
-      print('Error loading product info: $e');
+      log('Error loading product info: $e');
     }
   }
 
@@ -376,7 +374,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
     isTablet: widget.isTablet,
     onCategorySelected: (category) {
       // Handle category selection if needed
-      print('Selected category: $category');
+      log('Selected category: $category');
     },
   );
 }
@@ -435,7 +433,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
         );
       },
       errorBuilder: (context, error, stackTrace) {
-        print('Error loading network image: $error');
+        log('Error loading network image: $error');
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -465,7 +463,7 @@ class _ProductDetailsDialogState extends State<ProductDetailsDialog> {
       File(path),
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        print('Error loading local image: $error');
+        log('Error loading local image: $error');
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

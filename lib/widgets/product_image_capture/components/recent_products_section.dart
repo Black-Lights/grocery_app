@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import '../../../config/theme.dart';
 import '../../../models/area.dart';
 import '../../../models/product.dart';

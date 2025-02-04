@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
@@ -26,7 +27,7 @@ class CachedImageService {
       // ❌ No cached image found
       return null;
     } catch (e) {
-      print('Error getting cached product image: $e');
+      log('Error getting cached product image: $e');
       return null;
     }
   }

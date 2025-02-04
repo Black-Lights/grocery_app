@@ -1,3 +1,4 @@
+import 'dart:developer';
 // lib/widgets/area_detail/dialogs/add_product_selector_dialog.dart
 
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class AddProductSelectorDialog extends StatelessWidget {
         );
       }
     } catch (e) {
-      print('Error picking image: $e');
+      log('Error picking image: $e');
       Get.snackbar(
         'Error',
         'Failed to process image',

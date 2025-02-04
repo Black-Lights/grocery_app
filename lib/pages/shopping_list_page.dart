@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
 import '../models/product.dart';
-import '../models/shopping_item.dart';
 import '../services/firestore_service.dart';
 import '../services/shopping_service.dart';
 import '../widgets/shopping/components/shopping_input.dart';

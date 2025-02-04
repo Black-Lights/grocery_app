@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -25,14 +26,14 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    print('Firebase initialized successfully');
+    log('Firebase initialized successfully');
 
     // Add Firebase Auth state listener for debugging
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
-        print('User is currently signed out');
+        log('User is currently signed out');
       } else {
-        print('User is signed in - UID: ${user.uid}');
+        log('User is signed in - UID: ${user.uid}');
       }
     });
 
@@ -55,7 +56,7 @@ Future<void> main() async {
     // Wrap the app with Riverpod
     runApp(ProviderScope(child: MyApp()));
   } catch (e) {
-    print('Error initializing app: $e');
+    log('Error initializing app: $e');
   }
 }
 
