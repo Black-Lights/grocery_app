@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../config/theme.dart';
@@ -90,21 +92,24 @@ class ProductCard extends StatelessWidget {
                     if (snapshot.hasData && snapshot.data != null) {
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          snapshot.data!,
+                        child: Image.file(
+                          File(snapshot.data!),  // ✅ Now loads from local storage if available
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(Icons.broken_image_outlined, size: 40, color: GroceryColors.grey400),
+                            );
+                          },
                         ),
                       );
                     }
                     return Padding(
                       padding: EdgeInsets.all(12),
-                      child: Image.asset(
-                        getCategoryIcon(product.category),
-                        fit: BoxFit.contain,
-                      ),
+                      child: Image.asset(getCategoryIcon(product.category), fit: BoxFit.contain),
                     );
                   },
                 ),
+
               ),
               SizedBox(width: 12),
 

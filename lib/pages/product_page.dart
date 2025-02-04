@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../config/theme.dart';
@@ -312,14 +314,12 @@ class ProductPage extends StatelessWidget {
     decoration: BoxDecoration(
       color: GroceryColors.background,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: GroceryColors.skyBlue.withOpacity(0.5),
-      ),
+      border: Border.all(color: GroceryColors.skyBlue.withOpacity(0.5)),
     ),
     child: FutureBuilder<String?>(
       future: product.barcode != null
-          ? _productImageService.getProductImage(product.barcode!, null)
-          : Future.value(null),
+        ? _productImageService.getProductImage(product.barcode!, null)
+        : Future.value(null),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -332,27 +332,17 @@ class ProductPage extends StatelessWidget {
         if (snapshot.hasData && snapshot.data != null) {
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              snapshot.data!,
+            child: Image.file(
+              File(snapshot.data!),  // ✅ Now loads full-size image from local storage
+              width: size,
+              height: size,
               fit: BoxFit.contain,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                    valueColor: AlwaysStoppedAnimation<Color>(GroceryColors.teal),
-                  ),
-                );
-              },
               errorBuilder: (context, error, stackTrace) {
-                print('Error loading product image: $error');
                 return _buildFallbackImage(size);
               },
             ),
           );
+
         }
 
         return _buildFallbackImage(size);
@@ -361,16 +351,17 @@ class ProductPage extends StatelessWidget {
   );
 }
 
-Widget _buildFallbackImage(double size) {
-  return Center(
-    child: Image.asset(
-      getCategoryIcon(product.category),
-      width: size * 0.3,
-      height: size * 0.3,
-      color: GroceryColors.grey400,
-    ),
-  );
-}
+
+  Widget _buildFallbackImage(double size) {
+    return Center(
+      child: Image.asset(
+        getCategoryIcon(product.category),
+        width: size * 0.5,
+        height: size * 0.5,
+        color: GroceryColors.grey400,
+      ),
+    );
+  }
 
   Widget _buildDetailRow(String label, String value, IconData icon, {Color? color}) {
     return Row(
