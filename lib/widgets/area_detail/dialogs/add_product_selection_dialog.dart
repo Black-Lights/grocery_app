@@ -13,8 +13,9 @@ import 'add_edit_product_dialog.dart';
 class AddProductSelectorDialog extends StatelessWidget {
   final Area area;
   final FirestoreService firestoreService;
+  final RxBool isProcessing = false.obs;
 
-  const AddProductSelectorDialog({
+  AddProductSelectorDialog({
     Key? key,
     required this.area,
     required this.firestoreService,
@@ -29,8 +30,10 @@ class AddProductSelectorDialog extends StatelessWidget {
       );
 
       if (image != null) {
+        isProcessing.value = true;
         final textRecognitionService = TextRecognitionService();
         final details = await textRecognitionService.processImage(image.path);
+        isProcessing.value = false;
         
         Get.back(); // Close selection dialog
         
@@ -73,7 +76,7 @@ class AddProductSelectorDialog extends StatelessWidget {
         ? MediaQuery.of(context).size.width * 0.4 
         : MediaQuery.of(context).size.width * 0.85;
 
-    return Dialog(
+    return Obx(() => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         width: dialogWidth,
@@ -81,9 +84,24 @@ class AddProductSelectorDialog extends StatelessWidget {
           color: GroceryColors.white,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: isProcessing.value
+            ? Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Processing Image...',
+                      style: TextStyle(fontSize: isTablet ? 18 : 16, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
             // Header
             Container(
               padding: EdgeInsets.all(isTablet ? 24 : 16),
@@ -199,6 +217,7 @@ class AddProductSelectorDialog extends StatelessWidget {
           ],
         ),
       ),
+    )
     );
   }
 

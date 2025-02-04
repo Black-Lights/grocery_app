@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Smart Grocery Manager',
+      title: 'Fresh Flow',
       theme: Get.find<ThemeService>().getThemeData(),
       home: Wrapper(),
       debugShowCheckedModeBanner: false,

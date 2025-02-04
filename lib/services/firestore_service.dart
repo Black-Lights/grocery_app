@@ -7,8 +7,13 @@ import '../models/notification.dart';
 import '../models/notification_settings.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
+
+  // ✅ Updated constructor to allow dependency injection
+  FirestoreService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _auth = auth ?? FirebaseAuth.instance;
 
   String get currentUserId {
     final user = _auth.currentUser;
@@ -17,22 +22,15 @@ class FirestoreService {
   }
 
   CollectionReference<Map<String, dynamic>> get areasCollection {
-    return _firestore
-        .collection('users')
-        .doc(currentUserId)
-        .collection('areas');
-  }
+  if (currentUserId.isEmpty) throw Exception("User ID is null or empty");
+  return _firestore.collection('users').doc(currentUserId).collection('areas');
+}
 
-  Future<void> createUserProfile(
-    {required String userId, required Map<String, dynamic> data}) async {
+  Future<void> createUserProfile({required String userId, required Map<String, dynamic> data}) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .set(data, SetOptions(merge: true));
+      await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
     } catch (e) {
-      print('Error creating user profile: $e');
-      throw Exception('Failed to create user profile');
+      throw Exception('Failed to create user profile: $e');
     }
   } 
 
@@ -105,23 +103,15 @@ class FirestoreService {
   Future<Map<String, dynamic>> getUserData() async {
     try {
       final doc = await userDoc.get();
-      if (!doc.exists) {
-        return {
-          'firstName': '',
-          'lastName': '',
-          'username': '',
-        };
+      if (!doc.exists || doc.data() == null) {
+        throw Exception("User data not found");
       }
-      return {
-        'firstName': doc.data()?['firstName'] ?? '',
-        'lastName': doc.data()?['lastName'] ?? '',
-        'username': doc.data()?['username'] ?? '',
-      };
+      return doc.data()!;
     } catch (e) {
-      print('Error getting user data: $e');
-      throw Exception('Failed to get user data');
+      throw Exception("Failed to retrieve user data: $e");
     }
   }
+
 
   // Update user profile
   Future<void> updateUserProfile({
@@ -292,10 +282,8 @@ class FirestoreService {
 
   // Get notifications collection reference
   CollectionReference<Map<String, dynamic>> get _notificationsRef {
-    return _firestore
-        .collection('users')
-        .doc(currentUserId)
-        .collection('notifications');
+    if (currentUserId.isEmpty) throw Exception("User ID is null or empty");
+    return _firestore.collection('users').doc(currentUserId).collection('notifications');
   }
 
   Future<List<GroceryNotification>> getRecentNotifications() async {
@@ -517,8 +505,7 @@ class FirestoreService {
       });
       return docRef.id;
     } catch (e) {
-      print('Error adding area: $e');
-      throw Exception('Failed to add area');
+      throw Exception("Failed to add area: $e");
     }
   }
 
@@ -618,57 +605,52 @@ class FirestoreService {
 
   // Add product to area
   Future<String> addProduct(
-    String areaId,  // Non-nullable String parameter
-    {
-      required String name,
-      required String category,
-      required DateTime manufacturingDate,
-      required DateTime expiryDate,
-      required double quantity,
-      required String unit,
-      String? notes,
-      String? brand,    // Added brand parameter
-      String? barcode,
-    }
-  ) async {
+    String areaId,
+    {required String name,
+    required String category,
+    required DateTime manufacturingDate,
+    required DateTime expiryDate,
+    required double quantity,
+    required String unit,
+    String? notes,
+    String? brand,
+    String? barcode}) async {
+
     try {
-      final docRef = await areasCollection
-          .doc(areaId)
-          .collection('products')
-          .add({
+      final docRef = await areasCollection.doc(areaId).collection('products').add({
         'name': name,
         'category': category,
         'manufacturingDate': Timestamp.fromDate(manufacturingDate),
         'expiryDate': Timestamp.fromDate(expiryDate),
         'quantity': quantity,
         'unit': unit,
-        'notes': notes,
-        'brand': brand,    // Added brand field
-        'barcode': barcode,  // Added barcode field
+        'notes': notes ?? '',
+        'brand': brand ?? '',
+        'barcode': barcode ?? '',  // ✅ Added barcode field
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
       return docRef.id;
     } catch (e) {
-      print('Error adding product: $e');
-      throw Exception('Failed to add product');
+      throw Exception("Failed to add product: $e");
     }
   }
 
   // Update product
   Future<void> updateProduct(
     String areaId,
-    String productId, {
-    String? name,
+    String productId,
+    {String? name,
     String? category,
     DateTime? manufacturingDate,
     DateTime? expiryDate,
     double? quantity,
     String? unit,
     String? notes,
-    String? brand,    // Added brand parameter
-    String? barcode,  // Added barcode parameter
-  }) async {
+    String? brand,
+    String? barcode}) async {
+
     try {
       final updates = <String, dynamic>{
         'updatedAt': FieldValue.serverTimestamp(),
@@ -676,26 +658,17 @@ class FirestoreService {
 
       if (name != null) updates['name'] = name;
       if (category != null) updates['category'] = category;
-      if (manufacturingDate != null) {
-        updates['manufacturingDate'] = Timestamp.fromDate(manufacturingDate);
-      }
-      if (expiryDate != null) {
-        updates['expiryDate'] = Timestamp.fromDate(expiryDate);
-      }
+      if (manufacturingDate != null) updates['manufacturingDate'] = Timestamp.fromDate(manufacturingDate);
+      if (expiryDate != null) updates['expiryDate'] = Timestamp.fromDate(expiryDate);
       if (quantity != null) updates['quantity'] = quantity;
       if (unit != null) updates['unit'] = unit;
       if (notes != null) updates['notes'] = notes;
-      if (brand != null) updates['brand'] = brand;       // Added brand update
-      if (barcode != null) updates['barcode'] = barcode; // Added barcode update
+      if (brand != null) updates['brand'] = brand;
+      if (barcode != null) updates['barcode'] = barcode;  // ✅ Added barcode field
 
-      await areasCollection
-          .doc(areaId)
-          .collection('products')
-          .doc(productId)
-          .update(updates);
+      await areasCollection.doc(areaId).collection('products').doc(productId).update(updates);
     } catch (e) {
-      print('Error updating product: $e');
-      throw Exception('Failed to update product');
+      throw Exception("Failed to update product: $e");
     }
   }
 

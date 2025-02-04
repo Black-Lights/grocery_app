@@ -31,7 +31,7 @@ class AuthLayout extends StatelessWidget {
         ),
         SizedBox(height: 24),
         Text(
-          'Grocery Manager',
+          'Fresh Flow',
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
