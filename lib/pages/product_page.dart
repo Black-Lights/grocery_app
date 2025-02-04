@@ -333,7 +333,7 @@ class ProductPage extends StatelessWidget {
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.file(
-              File(snapshot.data!),  // ✅ Now loads full-size image from local storage
+              File(snapshot.data!),  //   Now loads full-size image from local storage
               width: size,
               height: size,
               fit: BoxFit.contain,

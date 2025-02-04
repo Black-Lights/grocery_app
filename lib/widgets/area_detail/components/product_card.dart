@@ -93,7 +93,7 @@ class ProductCard extends StatelessWidget {
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.file(
-                          File(snapshot.data!),  // ✅ Now loads from local storage if available
+                          File(snapshot.data!),  //   Now loads from local storage if available
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Center(

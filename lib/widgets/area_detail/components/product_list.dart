@@ -143,6 +143,7 @@ class ProductList extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               'No products yet',
+              key: Key('emptyProductList'),
               style: TextStyle(
                 fontSize: isTablet ? 20 : 18,
                 fontWeight: FontWeight.bold,
@@ -159,6 +160,7 @@ class ProductList extends StatelessWidget {
             ),
             SizedBox(height: 24),
             ElevatedButton.icon(
+              key: Key('addProductButton'),
               onPressed: onAddProduct,
               icon: Icon(Icons.add),
               label: Text('Add Product'),
@@ -198,6 +200,7 @@ class ProductList extends StatelessWidget {
                 return Padding(
                   padding: EdgeInsets.only(bottom: 8),
                   child: ProductCard(
+                    key: Key('productItem_$index'),
                     product: product,
                     area: area,
                     isTablet: isTablet,

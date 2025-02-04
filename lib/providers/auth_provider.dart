@@ -26,7 +26,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 class AuthRepository {
   final FirebaseAuth _auth;
   AuthRepository(this._auth);
- /// ✅ Set Firebase locale to avoid "Ignoring header X-Firebase-Locale" warnings
+ ///   Set Firebase locale to avoid "Ignoring header X-Firebase-Locale" warnings
   void setFirebaseLocale(String locale) {
     _auth.setLanguageCode(locale);
   }

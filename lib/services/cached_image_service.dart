@@ -18,7 +18,7 @@ class CachedImageService {
       final cachedImagePath = await _getCachedImagePath(barcode);
       final cachedImageFile = File(cachedImagePath);
 
-      // ✅ If cached image exists, return its local path and store in memory cache
+      //   If cached image exists, return its local path and store in memory cache
       if (await cachedImageFile.exists()) {
         _imageCache[barcode] = cachedImagePath;
         return cachedImagePath;

@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
+import '../pages/legal/privacy_policy_page.dart';
+import '../pages/legal/terms_conditions_page.dart';
 import '../providers/auth_provider.dart';
 import '../config/theme.dart';
 import 'auth_layout.dart';
@@ -25,6 +27,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   final RxBool isCheckingUsername = false.obs;
   final RxBool isUsernameAvailable = true.obs;
   final RxString usernameError = RxString('');
+  bool hasAcceptedTerms = false;
 
   @override
   void dispose() {
@@ -108,7 +111,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
 
     final authRepo = ref.read(authRepositoryProvider);
     
-    // ✅ Set Firebase locale before signing up to prevent warnings
+    // Set Firebase locale before signing up to prevent warnings
     authRepo.setFirebaseLocale('en');
 
     isLoading.value = true;
@@ -118,7 +121,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
 
     if (userCredential?.user != null) {
       await authRepo.sendEmailVerification();
-      Get.off(() => VerifyEmailPage()); // ✅ Ensures navigation to verify page
+      Get.off(() => VerifyEmailPage()); //   Ensures navigation to verify page
     }
   } on FirebaseAuthException catch (e) {
     String errorMessage;
@@ -145,7 +148,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       snackPosition: SnackPosition.BOTTOM,
     );
 
-    // ✅ If an email was still sent, allow navigation to VerifyEmailPage
+    //   If an email was still sent, allow navigation to VerifyEmailPage
     if (e.code == 'too-many-requests' || e.code == 'operation-not-allowed') {
       Get.off(() => VerifyEmailPage());
     }
@@ -158,6 +161,58 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       snackPosition: SnackPosition.BOTTOM,
     );
   }
+  }
+
+  void showTermsDialog(BuildContext context, Function onAccept) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Terms and Conditions'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'By signing up, you agree to our Terms and Conditions and Privacy Policy.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => Get.to(() => TermsConditionsPage()),
+                  child: Text(
+                    'Read Terms and Conditions',
+                    style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                  ),
+                ),
+                SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => Get.to(() => PrivacyPolicyPage()),
+                  child: Text(
+                    'Read Privacy Policy',
+                    style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                onAccept();
+                Get.back();
+              },
+              child: Text('Accept'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
 
@@ -320,32 +375,44 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
               },
             ),
             SizedBox(height: 32),
-            Obx(() => ElevatedButton(
-              onPressed: isLoading.value ? null :  signUp,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: GroceryColors.teal,
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              Obx(() => ElevatedButton(
+                onPressed: isLoading.value
+                    ? null
+                    : () {
+                        if (!hasAcceptedTerms) {
+                          showTermsDialog(context, () {
+                            setState(() {
+                              hasAcceptedTerms = true;
+                            });
+                          });
+                        } else {
+                          signUp();
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: GroceryColors.teal,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ),
-              child: isLoading.value
-                  ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                child: isLoading.value
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    )
-                  : Text(
-                      'Create Account',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            )),
+              )),
             SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

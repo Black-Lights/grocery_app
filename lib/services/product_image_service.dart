@@ -61,7 +61,7 @@ class ProductImageService {
       final cachedImagePath = await _getCachedImagePath(barcode);
       final cachedImageFile = File(cachedImagePath);
 
-      // ✅ If cached image exists, return its local path & store it in memory
+      //   If cached image exists, return its local path & store it in memory
       if (await cachedImageFile.exists()) {
         _imageCache[barcode] = cachedImagePath;  // Store in memory
         if (!_lastRequestTimes.containsKey(barcode)) {
@@ -74,7 +74,7 @@ class ProductImageService {
       final productInfo = await getProductInfo(barcode);
       final imageUrl = productInfo?['imageUrl'];
 
-      // ✅ If OpenFoodFacts provides an image, download and save it locally
+      //   If OpenFoodFacts provides an image, download and save it locally
       if (imageUrl != null) {
         final downloadedImagePath = await downloadAndSaveImage(barcode, imageUrl);
         if (downloadedImagePath != null) {
@@ -83,7 +83,7 @@ class ProductImageService {
         return downloadedImagePath;
       }
 
-      // ✅ If no OpenFoodFacts image, return user-uploaded image
+      //   If no OpenFoodFacts image, return user-uploaded image
       return userImagePath;
     } catch (e) {
       log('Error getting product image: $e');

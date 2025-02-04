@@ -7,11 +7,13 @@ import '../../../services/shopping_service.dart';
 class AddToShoppingDialog extends StatefulWidget {
   final Product product;
   final bool isTablet;
+  final ShoppingService shoppingService; 
 
   const AddToShoppingDialog({
     Key? key,
     required this.product,
     required this.isTablet,
+    required this.shoppingService, 
   }) : super(key: key);
 
   @override

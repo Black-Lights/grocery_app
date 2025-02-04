@@ -46,16 +46,15 @@ class NotificationService extends GetxService {
       // Start all checks
       _startAllChecks();
     } catch (e) {
-      log('Error initializing notification service: $e');
+      log('Error initializing notification service');
     }
   }
 
   Future<void> refreshNotifications() async {
     try {
-      log('Refreshing notifications...');
       final freshNotifications = await _firestoreService.getRecentNotifications();
       notifications.value = freshNotifications;
-      log('Notifications refreshed. Count: ${notifications.length}');
+      log('Notifications refreshed.');
     } catch (e) {
       log('Error refreshing notifications: $e');
     }
@@ -63,8 +62,6 @@ class NotificationService extends GetxService {
 
   Future<void> initializeService() async {
     if (_isInitialized) return;
-    
-    log('Initializing NotificationService...');
     
     try {
       // Initialize local notifications
@@ -86,7 +83,7 @@ class NotificationService extends GetxService {
       });
       
       _isInitialized = true;
-      log('NotificationService initialized successfully');
+
     } catch (e) {
       log('Error initializing NotificationService: $e');
       _isInitialized = false;
@@ -235,7 +232,7 @@ class NotificationService extends GetxService {
         }
       }
     } catch (e) {
-      log('Error checking low stock products: $e');
+      log('Error encountered in notification processing.');
     }
   }
 
@@ -271,7 +268,7 @@ class NotificationService extends GetxService {
         );
       }
     } catch (e) {
-      log('Error generating weekly summary: $e');
+      log('Error encountered in notification processing.');
     }
   }
 
@@ -300,7 +297,7 @@ class NotificationService extends GetxService {
         }
       }
     } catch (e) {
-      log('Error checking expiring products: $e');
+      log('Error encountered in notification processing.');
     }
   }
 
@@ -371,8 +368,7 @@ class NotificationService extends GetxService {
         ),
         payload: payload,
       );
-
-      log('Local notification shown: $title');
+      
     } catch (e) {
       log('Error showing local notification: $e');
     }
@@ -414,11 +410,11 @@ class NotificationService extends GetxService {
       );
 
       if (isDuplicate) {
-        log('Skipping duplicate notification: $title');
+        log('Skipping duplicate notification');
         return;
       }
 
-      log('Creating new notification: $title');
+      log('Creating new notification');
 
       final notification = GroceryNotification(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -446,7 +442,6 @@ class NotificationService extends GetxService {
         areaId: areaId,
       );
 
-      log('Notification created and stored. Total notifications: ${notifications.length}');
     } catch (e) {
       log('Error creating notification: $e');
     }

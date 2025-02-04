@@ -2,7 +2,6 @@ import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// Mock User
 class MockUser extends Mock implements User {
   @override
   String get uid => 'test-user-id';

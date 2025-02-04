@@ -30,7 +30,7 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
       final authRepo = ref.read(authRepositoryProvider);
       user = authRepo.getCurrentUser();
 
-      // ✅ Only send verification email if it wasn't already sent in signUp()
+      //   Only send verification email if it wasn't already sent in signUp()
       if (!(user?.emailVerified ?? false)) {
         sendVerificationEmail();
       }

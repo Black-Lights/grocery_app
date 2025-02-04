@@ -112,6 +112,7 @@ class EmptyProductList extends StatelessWidget {
                   SizedBox(height: isTablet ? 24 : 20),
                   Text(
                     'No Products Yet',
+                    key: Key('emptyProductList'),
                     style: TextStyle(
                       fontSize: isTablet ? 20 : 18,
                       fontWeight: FontWeight.w600,
@@ -130,6 +131,7 @@ class EmptyProductList extends StatelessWidget {
                   ),
                   SizedBox(height: isTablet ? 32 : 24),
                   ElevatedButton.icon(
+                    key: Key('addProductButton'),
                     onPressed: onAddProduct,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: GroceryColors.teal,

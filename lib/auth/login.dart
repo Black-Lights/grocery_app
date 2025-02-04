@@ -48,12 +48,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         if (!userCredential!.user!.emailVerified) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => VerifyEmailPage()));
         } else {
-          // ✅ Fetch user profile from Firestore
+          //Fetch user profile from Firestore
           final userData = await firestoreService.getUserData();
 
           print("User Profile: ${userData['firstName']} ${userData['lastName']} - ${userData['username']}");
 
-          // ✅ You can now pass `userData` to another screen if needed.
+          //You can now pass `userData` to another screen if needed.
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AppScaffold()));
         }
       }
@@ -111,6 +111,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           SizedBox(height: 32),
           TextFormField(
+            key: Key('emailField'),
             controller: email,
             decoration: InputDecoration(
               labelText: 'Email',
@@ -123,6 +124,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           SizedBox(height: 16),
           TextFormField(
+            key: Key('passwordField'),
             controller: password,
             decoration: InputDecoration(
               labelText: 'Password',
@@ -143,6 +145,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           SizedBox(height: 24),
           ElevatedButton(
+            key: Key('loginButton'),
             onPressed: isLoading ? null : signIn,
             style: ElevatedButton.styleFrom(
               backgroundColor: GroceryColors.teal,

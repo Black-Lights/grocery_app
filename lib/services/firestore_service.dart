@@ -11,7 +11,7 @@ class FirestoreService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  // ✅ Updated constructor to allow dependency injection
+  // Updated constructor to allow dependency injection
   FirestoreService({FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _firestore = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance;
@@ -29,11 +29,12 @@ class FirestoreService {
 
   Future<void> createUserProfile({required String userId, required Map<String, dynamic> data}) async {
     try {
+      data['acceptedTerms'] = true; // Ensure terms acceptance is stored
       await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to create user profile: $e');
     }
-  } 
+  }
 
 
    // Add this property for default areas
@@ -63,11 +64,10 @@ class FirestoreService {
     // Add this method
   Future<void> initializeDefaultAreas() async {
     try {
-      log('Checking for existing areas...'); // Debug print
+      
       final areasSnapshot = await areasCollection.get();
       
       if (areasSnapshot.docs.isEmpty) {
-        log('No areas found, creating defaults...'); // Debug print
         
         // Create batch for multiple writes
         final batch = _firestore.batch();
@@ -85,7 +85,6 @@ class FirestoreService {
         
         // Commit the batch
         await batch.commit();
-        log('Default areas created successfully'); // Debug print
       } else {
         log('Areas already exist, skipping initialization'); // Debug print
       }
@@ -115,13 +114,20 @@ class FirestoreService {
 
 
   // Update user profile
+  bool isValidUsername(String username) {
+    return RegExp(r"^[a-zA-Z0-9_.-]{3,20}$").hasMatch(username);
+  }
+
   Future<void> updateUserProfile({
     required String firstName,
     required String lastName,
     required String username,
   }) async {
     try {
-      // First check if username is already taken by another user
+      if (!isValidUsername(username)) {
+        throw Exception("Invalid username format");
+      }
+
       if (await isUsernameExists(username)) {
         throw Exception('Username already exists');
       }
@@ -134,24 +140,23 @@ class FirestoreService {
       });
     } catch (e) {
       log('Error updating user profile: $e');
-      throw Exception('Failed to update profile: ${e.toString()}');
+      throw Exception('Failed to update profile');
     }
   }
 
-  // Check if username exists
-  Future<bool> isUsernameExists(String username) async {
-  try {
-    final querySnapshot = await _firestore
-        .collection('users')
-        .where('username', isEqualTo: username.toLowerCase())
-        .get();
+    // Check if username exists
+    Future<bool> isUsernameExists(String username) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username.toLowerCase())
+          .get();
 
-    return querySnapshot.docs.isNotEmpty;
-  } catch (e) {
-    log('Error checking username: $e');
-    throw Exception('Failed to check username availability');
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      throw Exception('Failed to check username availability');
+    }
   }
-}
 
   // Get single area
   Future<Area?> getArea(String areaId) async {
@@ -289,7 +294,6 @@ class FirestoreService {
 
   Future<List<GroceryNotification>> getRecentNotifications() async {
     try {
-      log('Fetching recent notifications from Firestore...');
       final snapshot = await _notificationsRef
           .orderBy('timestamp', descending: true)
           .limit(50)
@@ -303,7 +307,6 @@ class FirestoreService {
         });
       }).toList();
 
-      log('Retrieved ${notifications.length} notifications from Firestore');
       return notifications;
     } catch (e) {
       log('Error getting recent notifications: $e');
@@ -340,7 +343,6 @@ class FirestoreService {
 
   Future<void> addNotification(GroceryNotification notification) async {
     try {
-      log('Adding notification to Firestore: ${notification.title}');
       await _notificationsRef
           .doc(notification.id)
           .set(notification.toMap());
@@ -599,7 +601,6 @@ class FirestoreService {
         }).toList();
       });
     } catch (e) {
-      log('Error getting recent products: $e');
       throw Exception('Failed to get recent products');
     }
   }
@@ -627,7 +628,7 @@ class FirestoreService {
         'unit': unit,
         'notes': notes ?? '',
         'brand': brand ?? '',
-        'barcode': barcode ?? '',  // ✅ Added barcode field
+        'barcode': barcode ?? '',  //   Added barcode field
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -665,7 +666,7 @@ class FirestoreService {
       if (unit != null) updates['unit'] = unit;
       if (notes != null) updates['notes'] = notes;
       if (brand != null) updates['brand'] = brand;
-      if (barcode != null) updates['barcode'] = barcode;  // ✅ Added barcode field
+      if (barcode != null) updates['barcode'] = barcode;  //   Added barcode field
 
       await areasCollection.doc(areaId).collection('products').doc(productId).update(updates);
     } catch (e) {
