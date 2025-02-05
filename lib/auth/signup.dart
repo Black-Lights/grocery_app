@@ -107,61 +107,63 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   /// - Stores user details in Firestore
   /// - Sends email verification
   Future<void> signUp() async {
-    if (!_formKey.currentState!.validate() || !isUsernameAvailable.value) return;
+  if (!_formKey.currentState!.validate() || !isUsernameAvailable.value) return;
 
-    final authRepo = ref.read(authRepositoryProvider);
-    
-    // Set Firebase locale before signing up to prevent warnings
-    authRepo.setFirebaseLocale('en');
+  final authRepo = ref.read(authRepositoryProvider);
+  final firestoreService = ref.read(firestoreServiceProvider);
 
-    isLoading.value = true;
+  isLoading.value = true;
 
-    try {
+  try {
     final userCredential = await authRepo.signUp(email.text.trim(), password.text);
 
     if (userCredential?.user != null) {
-      await authRepo.sendEmailVerification();
-      Get.off(() => VerifyEmailPage()); //   Ensures navigation to verify page
-    }
-  } on FirebaseAuthException catch (e) {
-    String errorMessage;
+      final userId = userCredential!.user!.uid;
 
-    switch (e.code) {
-      case 'too-many-requests':
-        errorMessage = 'Too many requests. Try again later.';
-        break;
-      case 'operation-not-allowed':
-        errorMessage = 'Sign-up is disabled for this account.';
-        break;
-      case 'user-disabled':
-        errorMessage = 'This account has been disabled.';
-        break;
-      default:
-        errorMessage = e.message ?? 'An unexpected error occurred.';
-    }
-
-    Get.snackbar(
-      'Error',
-      errorMessage,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
-
-    //   If an email was still sent, allow navigation to VerifyEmailPage
-    if (e.code == 'too-many-requests' || e.code == 'operation-not-allowed') {
+      //Immediately redirect to email verification page before sending email
       Get.off(() => VerifyEmailPage());
+
+      //Store user profile in Firestore
+      await firestoreService.createUserProfile(
+        userId: userId,
+        data: {
+          'firstName': firstName.text.trim(),
+          'lastName': lastName.text.trim(),
+          'username': username.text.trim().toLowerCase(),
+          'email': email.text.trim().toLowerCase(),
+          'createdAt': DateTime.now(),
+          'acceptedTerms': true, 
+        },
+      );
+
+      //Initialize default areas for new users
+      await firestoreService.initializeDefaultAreas();
+
+      //Try sending verification email, but do not block navigation if it fails
+      try {
+        await authRepo.sendEmailVerification();
+      } catch (e) {
+        print("Failed to send verification email: $e");
+      }
     }
   } catch (e) {
-    Get.snackbar(
-      'Error',
-      'An unexpected error occurred.',
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    //If the user already exists, redirect them to the verification page
+    if (e.toString().contains('email-already-in-use')) {
+      Get.off(() => VerifyEmailPage());
+    } else {
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  } finally {
+    isLoading.value = false;
   }
-  }
+} 
+
 
   void showTermsDialog(BuildContext context, Function onAccept) {
     showDialog(

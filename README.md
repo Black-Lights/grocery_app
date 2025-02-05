@@ -19,7 +19,7 @@ A **Flutter** application for managing household groceries with **storage tracki
   - Expiry Date (with alerts)  
   - Quantity and Unit  
   - Additional Notes  
-- **Expiry Recognition** using OpenFoodFacts API  
+- **Details Recognition** using OpenFoodFacts API  
 
 ### **🛍 Shopping List**  
 - **Add Items with Quantity & Units**  

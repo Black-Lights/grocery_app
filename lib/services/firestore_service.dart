@@ -29,7 +29,7 @@ class FirestoreService {
 
   Future<void> createUserProfile({required String userId, required Map<String, dynamic> data}) async {
     try {
-      data['acceptedTerms'] = true; // Ensure terms acceptance is stored
+      data['acceptedTerms'] = true; //Ensure terms acceptance is stored
       await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to create user profile: $e');
