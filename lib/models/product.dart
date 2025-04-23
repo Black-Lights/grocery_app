@@ -12,7 +12,8 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? notes;
-  final String? imageUrl;
+  final String? brand;  // Added brand field
+  final String? barcode; // Added barcode field for future reference
 
   Product({
     required this.id,
@@ -26,7 +27,8 @@ class Product {
     required this.createdAt,
     required this.updatedAt,
     this.notes,
-    this.imageUrl,
+    this.brand,    // Optional brand
+    this.barcode,  // Optional barcode
   });
 
   Map<String, dynamic> toMap() {
@@ -37,11 +39,11 @@ class Product {
       'expiryDate': Timestamp.fromDate(expiryDate),
       'quantity': quantity,
       'unit': unit,
-      'areaId': areaId,
+      'notes': notes,
+      'brand': brand,    // Added to map
+      'barcode': barcode,  // Added to map
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'notes': notes,
-      'imageUrl': imageUrl,
     };
   }
 
@@ -55,10 +57,11 @@ class Product {
       quantity: (map['quantity'] as num).toDouble(),
       unit: map['unit'] ?? '',
       areaId: map['areaId'] ?? '',
+      notes: map['notes'],
+      brand: map['brand'],    // Added to constructor
+      barcode: map['barcode'],  // Added to constructor
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
-      notes: map['notes'],
-      imageUrl: map['imageUrl'],
     );
   }
 }

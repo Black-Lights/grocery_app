@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/shopping_item.dart';
@@ -19,26 +20,31 @@ class ShoppingService {
         .collection('shopping_list');
   }
 
-  // Add item to shopping list
-  Future<void> addItem(String name, {required double quantity, String unit = ''}) async {
+
+  // Single, consistent method for adding items
+  Future<void> addItem({
+    required String name,
+    required double quantity,
+    String unit = '',
+  }) async {
     try {
-      print('Debug - Adding item: $name with quantity: $quantity ${unit.isNotEmpty ? unit : ''}');
+      log('Debug - Adding item: $name with quantity: $quantity ${unit.isNotEmpty ? unit : ''}');
       
       final data = {
         'name': name,
+        'quantity': quantity,
+        'unit': unit,
         'isCompleted': false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-        'quantity': quantity,
-        'unit': unit,
       };
       
-      print('Debug - Document data to be added: $data');
+      log('Debug - Document data to be added: $data');
       
       await shoppingListCollection.add(data);
-      print('Debug - Item added successfully');
+      log('Debug - Item added successfully');
     } catch (e) {
-      print('Error adding shopping item: $e');
+      log('Error adding shopping item: $e');
       throw Exception('Failed to add item to shopping list');
     }
   }
@@ -46,14 +52,14 @@ class ShoppingService {
   // Get shopping list stream
   Stream<List<ShoppingItem>> getShoppingList() {
     try {
-      print('Debug - Getting shopping list for user: $currentUserId');
+      log('Debug - Getting shopping list for user: $currentUserId');
       
       return shoppingListCollection
           .snapshots()
           .map((snapshot) {
         final items = snapshot.docs.map((doc) {
           final data = doc.data();
-          print('Debug - Processing document ${doc.id}: $data');
+          log('Debug - Processing document ${doc.id}: $data');
 
           // Handle quantity conversion
           final rawQuantity = data['quantity'];
@@ -64,11 +70,11 @@ class ShoppingService {
           } else if (rawQuantity is double) {
             quantity = rawQuantity;
           } else {
-            print('Debug - Invalid quantity type: ${rawQuantity.runtimeType}');
+            log('Debug - Invalid quantity type: ${rawQuantity.runtimeType}');
             quantity = 1.0;
           }
 
-          print('Debug - Parsed quantity: $quantity');
+          log('Debug - Parsed quantity: $quantity');
 
           return ShoppingItem(
             id: doc.id,
@@ -89,11 +95,11 @@ class ShoppingService {
           return b.createdAt.compareTo(a.createdAt);
         });
 
-        print('Debug - Returning ${items.length} items');
+        log('Debug - Returning ${items.length} items');
         return items;
       });
     } catch (e) {
-      print('Error getting shopping list: $e');
+      log('Error getting shopping list: $e');
       throw Exception('Failed to get shopping list');
     }
   }
@@ -101,16 +107,16 @@ class ShoppingService {
   // Toggle item completion status
   Future<void> toggleItem(String itemId, bool isCompleted) async {
     try {
-      print('Debug - Toggling item $itemId to $isCompleted');
+      log('Debug - Toggling item $itemId to $isCompleted');
       
       await shoppingListCollection.doc(itemId).update({
         'isCompleted': isCompleted,
         'updatedAt': FieldValue.serverTimestamp(),
       });
       
-      print('Debug - Item toggled successfully');
+      log('Debug - Item toggled successfully');
     } catch (e) {
-      print('Error toggling shopping item: $e');
+      log('Error toggling shopping item: $e');
       throw Exception('Failed to update item');
     }
   }
@@ -118,13 +124,13 @@ class ShoppingService {
   // Delete single item
   Future<void> deleteItem(String itemId) async {
     try {
-      print('Debug - Deleting item $itemId');
+      log('Debug - Deleting item $itemId');
       
       await shoppingListCollection.doc(itemId).delete();
       
-      print('Debug - Item deleted successfully');
+      log('Debug - Item deleted successfully');
     } catch (e) {
-      print('Error deleting shopping item: $e');
+      log('Error deleting shopping item: $e');
       throw Exception('Failed to delete item');
     }
   }
@@ -132,13 +138,13 @@ class ShoppingService {
   // Delete all completed items
   Future<void> deleteCompletedItems() async {
     try {
-      print('Debug - Deleting all completed items');
+      log('Debug - Deleting all completed items');
       
       final completedItems = await shoppingListCollection
           .where('isCompleted', isEqualTo: true)
           .get();
       
-      print('Debug - Found ${completedItems.docs.length} completed items');
+      log('Debug - Found ${completedItems.docs.length} completed items');
 
       final batch = _firestore.batch();
       
@@ -147,9 +153,9 @@ class ShoppingService {
       }
       
       await batch.commit();
-      print('Debug - Completed items deleted successfully');
+      log('Debug - Completed items deleted successfully');
     } catch (e) {
-      print('Error deleting completed items: $e');
+      log('Error deleting completed items: $e');
       throw Exception('Failed to delete completed items');
     }
   }
@@ -157,16 +163,16 @@ class ShoppingService {
   // Update item quantity
   Future<void> updateItemQuantity(String itemId, double quantity) async {
     try {
-      print('Debug - Updating quantity for item $itemId to $quantity');
+      log('Debug - Updating quantity for item $itemId to $quantity');
       
       await shoppingListCollection.doc(itemId).update({
         'quantity': quantity,
         'updatedAt': FieldValue.serverTimestamp(),
       });
       
-      print('Debug - Quantity updated successfully');
+      log('Debug - Quantity updated successfully');
     } catch (e) {
-      print('Error updating item quantity: $e');
+      log('Error updating item quantity: $e');
       throw Exception('Failed to update item quantity');
     }
   }
@@ -174,16 +180,16 @@ class ShoppingService {
   // Update item unit
   Future<void> updateItemUnit(String itemId, String unit) async {
     try {
-      print('Debug - Updating unit for item $itemId to $unit');
+      log('Debug - Updating unit for item $itemId to $unit');
       
       await shoppingListCollection.doc(itemId).update({
         'unit': unit,
         'updatedAt': FieldValue.serverTimestamp(),
       });
       
-      print('Debug - Unit updated successfully');
+      log('Debug - Unit updated successfully');
     } catch (e) {
-      print('Error updating item unit: $e');
+      log('Error updating item unit: $e');
       throw Exception('Failed to update item unit');
     }
   }
@@ -191,12 +197,12 @@ class ShoppingService {
   // Get single item
   Future<ShoppingItem?> getItem(String itemId) async {
     try {
-      print('Debug - Getting item $itemId');
+      log('Debug - Getting item $itemId');
       
       final doc = await shoppingListCollection.doc(itemId).get();
       
       if (!doc.exists) {
-        print('Debug - Item not found');
+        log('Debug - Item not found');
         return null;
       }
 
@@ -211,7 +217,7 @@ class ShoppingService {
       } else if (rawQuantity is double) {
         quantity = rawQuantity;
       } else {
-        print('Debug - Invalid quantity type: ${rawQuantity.runtimeType}');
+        log('Debug - Invalid quantity type: ${rawQuantity.runtimeType}');
         quantity = 1.0;
       }
 
@@ -225,7 +231,7 @@ class ShoppingService {
         unit: data['unit'] ?? '',
       );
     } catch (e) {
-      print('Error getting item: $e');
+      log('Error getting item: $e');
       throw Exception('Failed to get item');
     }
   }

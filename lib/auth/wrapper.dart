@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../pages/homepage.dart';
-import 'login.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import 'welcome_page.dart';
 import 'verify.dart';
+import '../widgets/navigation/app_scaffold.dart';
 
-class Wrapper extends StatelessWidget {
-  const Wrapper({super.key});
-  
+class Wrapper extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          if (snapshot.data!.emailVerified){
-            return HomePage();
-          }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+
+    return authState.when(
+      data: (user) {
+        if (user == null) {
+          return WelcomePage();
+        } else if (!user.emailVerified) {
           return VerifyEmailPage();
+        } else {
+          return AppScaffold();
         }
-        return LoginPage();
       },
+      loading: () => Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (_, __) => WelcomePage(),
     );
   }
 }
