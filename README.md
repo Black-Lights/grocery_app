@@ -193,13 +193,20 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## **📞 Contact**  
 
-Your Name - [@YourTwitter](https://twitter.com/YourTwitter)  
 
 Project Link: [https://github.com/Black-Lights/grocery_app](https://github.com/Black-Lights/grocery_app)  
 
 ## **📸 Screenshots**  
 
-[Add screenshots of your app here]  
+![SS_Mob_login](https://github.com/user-attachments/assets/12e278de-88c1-4a4f-b16c-88378bf63db7)
+
+![2025-04-23 17-58-41 High Res Screenshot](https://github.com/user-attachments/assets/71325ca1-e14a-43b9-94d4-18e33d28547d)
+
+![2025-04-23 17-59-26 High Res Screenshot](https://github.com/user-attachments/assets/f6867fce-14c3-4480-bf75-4f861e9cf3c0)
+
+![2025-04-23 18-00-05 High Res Screenshot](https://github.com/user-attachments/assets/bdcc367b-1d0c-45ed-817e-31678bb046d7)
+
+![2025-04-23 18-00-15 High Res Screenshot](https://github.com/user-attachments/assets/742aeea4-a23b-4525-acc5-94af5a125620)
 
 ## **🚀 Future Enhancements**  
 
@@ -211,4 +218,4 @@ Project Link: [https://github.com/Black-Lights/grocery_app](https://github.com/B
 - **Language Support**  
 
 ---  
-Made with ❤️ by **[Your Name/Team Name]**
+Made with ❤️ by **Ammar and Moldir**
